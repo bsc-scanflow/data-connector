@@ -99,8 +99,7 @@ class DockerBuilder(builder.Builder):
                     try:
                         # self.client.images.push(image_name)
                         self.client.images.push(repository=f"{self.registry}/{image_name}", 
-                                                tag=image.tags, 
-                                                auth_config={'username': 'cloudskin-ncloud2', 'password': 'Y2xvdWRza2luLW5jbG91ZDI6cE54emZQNm5TWWJMeEJWM1lHaGk='})
+                                                tag=image.tags)
                         logging.info(f'[+] Image [{source.name}] was pushed to registry successfully.')
                     except docker.api.client.DockerException as e:
                         logging.info(f'[+] Image [{source.name}] push failed.')

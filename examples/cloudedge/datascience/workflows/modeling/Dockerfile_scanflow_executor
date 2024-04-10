@@ -1,0 +1,9 @@
+
+
+FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor
+
+COPY modeling /app/modeling
+
+RUN pip install -r /app/modeling/requirements.txt
+
+ENTRYPOINT ["python", "/app/modeling/modeling.py"]
