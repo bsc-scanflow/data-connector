@@ -19,6 +19,7 @@ class Workflow(object):
                  nodes: List[Node],
                  edges: List[Edge] = None,
                  type: str = None,
+                 cron: str = None,
                  resources: V1ResourceRequirements = None,
                  affinity: V1Affinity = None,
                  kedaSpec: KedaSpec = None,
@@ -29,6 +30,7 @@ class Workflow(object):
         self.nodes = nodes
         self.edges = edges
         self.type = type #batch or online
+        self.cron = cron
         self.resources = resources
         self.affinity = affinity
         self.kedaSpec = kedaSpec

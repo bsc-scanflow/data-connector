@@ -8,6 +8,7 @@ import scanflow.deployer.deployer as deployer
 from scanflow.templates import ArgoWorkflows
 from scanflow.deployer.env import ScanflowSecret, ScanflowClientConfig
 from scanflow.tools.param import format_parameters, format_command
+from scanflow.templates import Kubernetes
 
 from kubernetes.client import V1ResourceRequirements
 
@@ -56,8 +57,14 @@ class ArgoDeployer(deployer.Deployer):
                     workflow_affinity = workflow.affinity.to_dict()
             else:
                 workflow_affinity = None
+
+            if workflow.cron:
+                # schedule to run at one minute past midnight (00:01) every day
+                # cron_config = {"schedule": "1 0 * * *", "suspend": "false"}
+                #cron_config = {"schedule": "*/5 * * * *", "suspend": "false"}
+                cron_config = {"schedule": workflow.cron, "timezone": "Europe/Madrid"}
                 
-            self.argoclient.configWorkflow(workflow_name, workflow_affinity)
+            self.argoclient.configWorkflow(workflow_name, workflow_affinity, cron_config)
 
             #output volume - deleted mode
             if workflow.output_dir is not None:
@@ -138,6 +145,13 @@ class ArgoDeployer(deployer.Deployer):
             argoWorkflow = self.argoclient.submitWorkflow(namespace)
             logging.info(f"[+++] Workflow: [{workflow_name}] has been submitted to argo {argoWorkflow}")
 
+            if workflow.cron:
+                #TODO: couler bug for cron workflow, need to change suspend to true or false, now it turns into 'true' 'false'
+                #kubectl patch cronworkflows.argoproj.io -n scanflow-cloudedge-dataengineer batch-inference-graph --type='json' -p='[{"op": "replace", "path": "/spec/suspend", "value": false}]'
+                self.kubeclient.patch_cron_workflow(namespace, 
+                                                    workflow_name, 
+                                                    False)
+
             if argoWorkflow is not None:
                 return True
             else:
@@ -163,7 +177,11 @@ class ArgoDeployer(deployer.Deployer):
         workflow_name = workflow.name
         deleted = False
         try:
-            result = self.argoclient.deleteWorkflow(namespace, workflow_name)
+            if workflow.cron:
+                result = self.kubeclient.delete_cron_workflow(namespace, workflow_name)
+            else:
+                result = self.argoclient.deleteWorkflow(namespace, workflow_name)
+
             if result is not None:
                 deleted = True
         except:

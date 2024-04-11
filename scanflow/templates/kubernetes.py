@@ -775,3 +775,76 @@ class Kubernetes:
                 ),
             )
         return volumes
+
+    def patch_cron_workflow(self, namespace, name, suspend=False):
+        """
+        Patch the `spec.suspend` field of a CronWorkflow.
+
+        Args:
+        - namespace (str): The namespace of the CronWorkflow.
+        - name (str): The name of the CronWorkflow.
+        - suspend (bool): The value to set for the `spec.suspend` field.
+        """
+
+        # Create a patch object
+        patch = {
+            "spec": {
+                "suspend": suspend
+            }
+        }
+
+        # Specify the API group and version for CronWorkflow
+        api_group = 'argoproj.io'
+        api_version = 'v1alpha1'
+        plural = 'cronworkflows'
+
+        # Create an instance of the CustomObjectsApi
+        api_instance = client.CustomObjectsApi()
+
+        try:
+            # Patch the CronWorkflow
+            api_response = api_instance.patch_namespaced_custom_object(
+                group=api_group,
+                version=api_version,
+                namespace=namespace,
+                plural=plural,
+                name=name,
+                body=patch,
+            )
+            print("CronWorkflow patched successfully.")
+            print(api_response)
+        except ApiException as e:
+            raise Exception(f"Exception when calling patch")
+
+    def delete_cron_workflow(self, namespace, name):
+        """
+        Delete a CronWorkflow.
+
+        Args:
+        - namespace (str): The namespace of the CronWorkflow to delete.
+        - name (str): The name of the CronWorkflow to delete.
+        """
+
+        # Specify the API group, version, and plural form of the CronWorkflow
+        api_group = 'argoproj.io'
+        api_version = 'v1alpha1'
+        plural = 'cronworkflows'
+
+        # Create an instance of the CustomObjectsApi
+        api_instance = client.CustomObjectsApi()
+
+        try:
+            # Delete the CronWorkflow
+            api_response = api_instance.delete_namespaced_custom_object(
+                group=api_group,
+                version=api_version,
+                namespace=namespace,
+                plural=plural,
+                name=name,
+                body=client.V1DeleteOptions(propagation_policy="Foreground", grace_period_seconds=5),
+            )
+            print("CronWorkflow deleted successfully.")
+            print(api_response)
+        except ApiException as e:
+            raise Exception(f"Exception when calling CustomObjectsApi->delete_namespaced_custom_object: {e}")
+

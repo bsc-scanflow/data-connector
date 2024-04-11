@@ -56,9 +56,10 @@ class ArgoWorkflows:
     def argoDag(self, dependency_graph):
         couler.dag(dependency_graph)
 
-    def configWorkflow(self, workflow_name, affinity):
+    def configWorkflow(self, workflow_name, affinity, cron_config):
         couler.config_workflow(
             name=workflow_name,
+            cron_config=cron_config,
             # timeout=10800,
             # time_to_clean=10800 * 1.5,
             affinity=affinity
