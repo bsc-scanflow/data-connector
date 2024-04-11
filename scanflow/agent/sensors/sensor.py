@@ -3,6 +3,9 @@ from functools import wraps
 from scanflow.tools.env import get_env
 from scanflow.agent.schemas.message import SensorMessage
 
+from datetime import datetime, timedelta
+import time
+
 import logging
 logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
@@ -40,6 +43,11 @@ class sensor:
                 experiment_ids = self.get_experiment_ids()
                 logging.info(f"sensor get runs from experiment_ids: {experiment_ids}")
                 
+                if kwargs.get('frequency'):
+                    starttimeframe = int((datetime.now() - timedelta(seconds=kwargs.get('frequency'))).timestamp() * 1000)
+                    filter_string = filter_string + "and attributes.created >" + str(starttimeframe)
+                    logging.info("lastest filer_string for query")
+                    
                 runs = mlflow.search_runs(experiment_ids=experiment_ids,
                     filter_string=self.filter_string,
                     max_results=self.max_results,

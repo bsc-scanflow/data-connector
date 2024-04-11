@@ -106,6 +106,7 @@ class Sensor(BaseModel):
     args: tuple = None
     kwargs: dict = None
     next_run_time: datetime = None
+
 class Agent(BaseModel):
     name: str
     image: str

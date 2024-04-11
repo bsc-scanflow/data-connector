@@ -381,6 +381,22 @@ class Kubernetes:
             logging.error(f"delete_deployment error") 
             return False
 
+    def update_deployment(self, namespace, deployment_name, patch):
+        api_instance = client.AppsV1Api()
+        
+        try:
+            api_instance.patch_namespaced_deployment(
+                name=deployment_name,
+                namespace=namespace,
+                body=patch
+            )
+            logging.info("update_deployment_with_patch succeeded")
+            return True
+        except ApiException as e:
+            logging.error(f"update_deployment_with_patch failed: {e}")
+            return False
+
+
 # PVC
 #{'api_version': 'v1',
 # 'kind': 'PersistentVolumeClaim',
