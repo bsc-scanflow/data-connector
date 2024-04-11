@@ -1,5 +1,5 @@
 
-FROM 172.30.0.49:5000/scanflow-agent
+FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-agent
 
 ENV AGENT_NAME planner
 ENV AGENT_TYPE planner
@@ -9,5 +9,7 @@ RUN mkdir /agent
 
 # CMD [ "cp /agent/* /scanflow/scanflow/scanflow/agent/template/planner && uvicorn main:agent --reload --host 0.0.0.0 --port 8080" ]
 
+ENV sensors '{"watch_qos": {"name": "watch_qos", "func": "scanflow.agent.template.monitor.custom_sensors.watch_qos", "trigger": {"type": "interval", "weeks": 0, "days": 0, "hours": , "minutes": 5, "seconds": 0, "start_date": null, "end_date": null, "timezone": null, "jitter": null}}}' 
+
 #for testing
-CMD [ "cp /scanflow/scanflow/examples/mlperf/dataengineer/agents/planner/* /scanflow/scanflow/scanflow/agent/template/planner && uvicorn main:agent --reload --host 0.0.0.0 --port 8080" ]
+CMD [ "cp /scanflow/scanflow/examples/cloudedge/dataengineer/agents/planner/* /scanflow/scanflow/scanflow/agent/template/planner && uvicorn main:agent --reload --host 0.0.0.0 --port 8080" ]
