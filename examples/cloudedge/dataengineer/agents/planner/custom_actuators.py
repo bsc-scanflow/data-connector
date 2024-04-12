@@ -7,7 +7,7 @@ logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
 logging.getLogger().setLevel(logging.INFO)
 
 #ok!
-async def call_migrate_app(max_qos_index):
+async def call_migrate_app(max_qos_index, namespace, deployment_name):
     nodeName_list=['cloudskin-k8s-control-plane-0.novalocal',
                  'cloudskin-k8s-worker-1.novalocal',
                  'cloudskin-k8s-worker-0.novalocal',
@@ -20,7 +20,7 @@ async def call_migrate_app(max_qos_index):
         "spec": {
             "template": {
                 "spec": {
-                    "nodeSelector": {"kubernetes.io/hostname":nodeName_list[max_qos_index]}
+                    "nodeSelector": {"kubernetes.io/hostname":nodeName_list[int(max_qos_index)]}
                 }
             }
         }
@@ -41,6 +41,6 @@ async def call_migrate_app(max_qos_index):
         )
         logging.info("update_deployment_with_patch succeeded")
         return True
-    except ApiException as e:
+    except client.api_client.rest.ApiException as e:
         logging.error(f"update_deployment_with_patch failed: {e}")
         return False

@@ -15,6 +15,7 @@ from datetime import datetime
 import time
 
 from scanflow.agent.sensors.sensor import sensor
+import mlflow
 
 def tock():
     print('Tock! The time is: %s' %  time.strftime("'%Y-%m-%d %H:%M:%S'"))
@@ -25,12 +26,19 @@ async def watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
     print(args)
     print(kwargs)
     
-    max_qos = runs[0].data.metrics['max_qos']
-    max_qos_index = runs[0].data.parameters['max_qos_index']
-    
-    logging.info("max_qos {}, index {}".format(max_qos, max_qos_index))
+    max_qos = 0
 
-    if qos_constraints(max_qos):
-       await call_migrate_app(max_qos_index)
+    if runs:
+        max_qos = runs[0].data.metrics['max_qos']
+        max_qos_index = runs[0].data.params['max_qos_index']
+        
+        logging.info("max_qos {}, index {}".format(max_qos, max_qos_index))
+
+        if qos_constraints(max_qos):
+            await call_migrate_app(max_qos_index, "scanflow-cloudedge-dataengineer", "nginx-deployment")
+        else:
+            logging.info("all machine can not achive qos sla, no actions")
+    else:
+        logging.info("no data in last check")
 
     return max_qos 
