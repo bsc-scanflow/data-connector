@@ -25,6 +25,35 @@ async def call_migrate_app(max_qos_index, namespace, deployment_name):
             }
         }
     }
+    # # Construct the patch
+    # patch_body = {
+    #     "spec": {
+    #         "template": {
+    #             "spec": {
+    #                 "affinity": {
+    #                     "nodeAffinity": {
+    #                         "requiredDuringSchedulingIgnoredDuringExecution": {
+    #                             "nodeSelectorTerms": [
+    #                                 {
+    #                                     "matchExpressions": [
+    #                                         {
+    #                                             "key": "kubernetes.io/hostname",
+    #                                             "operator": "In",
+    #                                             "values": [
+    #                                                 "cloudskin-k8s-worker-1.novalocal"
+    #                                             ]
+    #                                         }
+    #                                     ]
+    #                                 }
+    #                             ]
+    #                         }
+    #                     }
+    #                 }
+    #             }
+    #         }
+    #     }
+    # }
+
 
     logging.info(f"agent is patch deployment to node - {patch_body}")
 

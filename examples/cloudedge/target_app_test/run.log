@@ -1,0 +1,23 @@
+INFO:     Application startup complete.
+12-Apr-24 10:29:31 -  INFO - Running job "watch_qos (trigger: interval[0:05:00], next run at: 2024-04-12 10:34:31 UTC)" (scheduled at 2024-04-12 10:29:31.706882+00:00)
+12-Apr-24 10:29:31 -  INFO - Connecting tracking server uri: http://scanflow-tracker.scanflow-cloudedge-dataengineer.svc.cluster.local
+12-Apr-24 10:29:31 -  INFO - sensor get runs from experiment_ids: ['2']
+12-Apr-24 10:29:31 -  INFO - max_qos 28.944232927357426, index 0
+12-Apr-24 10:29:31 -  INFO - agent is patch deployment to node - {'spec': {'template': {'spec': {'nodeSelector': {'kubernetes.io/hostname': 'cloudskin-k8s-control-plane-0.novalocal'}}}}}
+12-Apr-24 10:29:31 -  INFO - update_deployment_with_patch succeeded
+12-Apr-24 10:29:32 -  INFO - Found credentials in environment variables.
+12-Apr-24 10:29:32 -  INFO - Job "watch_qos (trigger: interval[0:05:00], next run at: 2024-04-12 10:34:31 UTC)" executed successfully
+12-Apr-24 10:34:31 -  INFO - Running job "watch_qos (trigger: interval[0:05:00], next run at: 2024-04-12 10:39:31 UTC)" (scheduled at 2024-04-12 10:34:31.706882+00:00)
+12-Apr-24 10:34:31 -  INFO - Connecting tracking server uri: http://scanflow-tracker.scanflow-cloudedge-dataengineer.svc.cluster.local
+12-Apr-24 10:34:31 -  INFO - sensor get runs from experiment_ids: ['2']
+12-Apr-24 10:34:31 -  INFO - max_qos 28.39132626626699, index 0
+12-Apr-24 10:34:31 -  INFO - agent is patch deployment to node - {'spec': {'template': {'spec': {'nodeSelector': {'kubernetes.io/hostname': 'cloudskin-k8s-control-plane-0.novalocal'}}}}}
+12-Apr-24 10:34:31 -  INFO - update_deployment_with_patch succeeded
+12-Apr-24 10:34:31 -  INFO - Job "watch_qos (trigger: interval[0:05:00], next run at: 2024-04-12 10:39:31 UTC)" executed successfully
+12-Apr-24 10:39:31 -  INFO - Running job "watch_qos (trigger: interval[0:05:00], next run at: 2024-04-12 10:44:31 UTC)" (scheduled at 2024-04-12 10:39:31.706882+00:00)
+12-Apr-24 10:39:31 -  INFO - Connecting tracking server uri: http://scanflow-tracker.scanflow-cloudedge-dataengineer.svc.cluster.local
+12-Apr-24 10:39:31 -  INFO - sensor get runs from experiment_ids: ['2']
+12-Apr-24 10:39:31 -  INFO - max_qos 26.56414992658328, index 1
+12-Apr-24 10:39:31 -  INFO - agent is patch deployment to node - {'spec': {'template': {'spec': {'nodeSelector': {'kubernetes.io/hostname': 'cloudskin-k8s-worker-1.novalocal'}}}}}
+12-Apr-24 10:39:31 -  INFO - update_deployment_with_patch succeeded
+12-Apr-24 10:39:31 -  INFO - Job "watch_qos (trigger: interval[0:05:00], next run at: 2024-04-12 10:44:31 UTC)" executed successfully
