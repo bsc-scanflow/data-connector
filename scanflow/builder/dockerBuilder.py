@@ -13,6 +13,8 @@ from typing import List, Dict
 
 from scanflow.tools.scanflowtools import get_scanflow_paths
 
+import base64
+
 logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
 logging.getLogger().setLevel(logging.INFO)
@@ -27,9 +29,9 @@ class DockerBuilder(builder.Builder):
     def build_ScanflowApplication(self, app: Application, trackerPort: int):
         self.paths = get_scanflow_paths(app.app_dir)
         if app.agents is not None:
-            self.build_ScanflowAgents(app.agents)
+            self.build_ScanflowAgents(app.app_name, app.team_name, app.agents)
         if app.workflows is not None:
-            self.build_ScanflowWorkflows(app.workflows)
+            self.build_ScanflowWorkflows(app.app_name, app.team_name, app.workflows)
         if app.tracker is None:
             app.tracker = self.build_ScanflowTracker(nodePort=trackerPort)
         return app
@@ -37,33 +39,34 @@ class DockerBuilder(builder.Builder):
     def build_ScanflowTracker(self, nodePort: int):
         return Tracker(nodePort)
 
-    def build_ScanflowAgents(self, agents: List[Agent]):
+    def build_ScanflowAgents(self, name, team_name, agents: List[Agent]):
         for agent in agents:
-            self.build_ScanflowAgent(agent)
+            self.build_ScanflowAgent(name, team_name, agent)
 
-    def build_ScanflowAgent(self, agent: Agent):
-        agent.image = self.__build_image_to_registry(agent)
+    def build_ScanflowAgent(self, name, team_name, agent: Agent):
+        agent.image = self.__build_image_to_registry(name, team_name, agent)
 
-    def build_ScanflowWorkflows(self, workflows: List[Workflow]):
+    def build_ScanflowWorkflows(self, name, team_name, workflows: List[Workflow]):
         for workflow in workflows:
-            self.build_ScanflowWorkflow(workflow)
+            self.build_ScanflowWorkflow(name, team_name, workflow)
 
-    def build_ScanflowWorkflow(self, workflow: Workflow):
-        self.build_ScanflowNodes(workflow.nodes)
+    def build_ScanflowWorkflow(self, name, team_name, workflow: Workflow):
+        self.build_ScanflowNodes(name, team_name, workflow.name, workflow.nodes)
 
-    def build_ScanflowNodes(self, nodes: List[Node]):
+    def build_ScanflowNodes(self, name, team_name, workflow_name, nodes: List[Node]):
         for node in nodes:
-            self.build_ScanflowNode(node)
+            self.build_ScanflowNode(name, team_name, workflow_name, node)
 
-    def build_ScanflowNode(self, node: Node):
-        node.image = self.__build_image_to_registry(node)
+    def build_ScanflowNode(self, name, team_name, workflow_name, node: Node):
+        node.image = self.__build_image_to_registry(name, team_name+'-'+workflow_name, node)
 
 
-    def __build_image_to_registry(self, source):
+    def __build_image_to_registry(self, name, long_name, source):
 
-        image_name = f"{self.registry}/{source.name}"
         if isinstance(source, Agent):
-            image_name = f"{self.registry}/{source.name}-agent"
+            image_name = f"{self.registry}/{name}-{long_name}-{source.name}-agent"
+        else:
+            image_name = f"{self.registry}/{name}-{long_name}-{source.name}"
         logging.info(f"Building image {image_name}")
 
         try:
@@ -98,11 +101,22 @@ class DockerBuilder(builder.Builder):
 
                     try:
                         # self.client.images.push(image_name)
+                        #TODOs: add the cred to k8s secret
+                        encoded_creds_gitlab = "Y2xvdWRza2luLW5jbG91ZDI6cE54emZQNm5TWWJMeEJWM1lHaGk="
+                        decoded_creds_gitlab = base64.b64decode(encoded_creds_gitlab).decode('utf-8')
+                        username_gitlab, password_gitlab = decoded_creds_gitlab.split(':')
+
+                        auth_config_gitlab = {
+                            'username': username_gitlab,
+                            'password': password_gitlab
+                        }
                         self.client.images.push(repository=f"{self.registry}/{image_name}", 
-                                                tag=image.tags)
+                                                tag="latest",
+                                                auth_config=auth_config_gitlab)
+
                         logging.info(f'[+] Image [{source.name}] was pushed to registry successfully.')
                     except docker.api.client.DockerException as e:
-                        logging.info(f'[+] Image [{source.name}] push failed.')
+                        logging.info(f'[+] Image [{source.name}] push failed {e}.')
 
                     return image.tags[0]
             except docker.api.client.DockerException as e:
