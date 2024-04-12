@@ -392,7 +392,7 @@ class Kubernetes:
             )
             logging.info("update_deployment_with_patch succeeded")
             return True
-        except ApiException as e:
+        except client.api_client.rest.ApiException as e:
             logging.error(f"update_deployment_with_patch failed: {e}")
             return False
 
@@ -829,7 +829,7 @@ class Kubernetes:
             )
             print("CronWorkflow patched successfully.")
             print(api_response)
-        except ApiException as e:
+        except client.api_client.rest.ApiException as e:
             raise Exception(f"Exception when calling patch")
 
     def delete_cron_workflow(self, namespace, name):
@@ -861,6 +861,6 @@ class Kubernetes:
             )
             print("CronWorkflow deleted successfully.")
             print(api_response)
-        except ApiException as e:
+        except client.api_client.rest.ApiException as e:
             raise Exception(f"Exception when calling CustomObjectsApi->delete_namespaced_custom_object: {e}")
 

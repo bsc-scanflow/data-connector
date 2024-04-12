@@ -45,11 +45,13 @@ class sensor:
                 
                 if kwargs.get('frequency'):
                     starttimeframe = int((datetime.now() - timedelta(seconds=kwargs.get('frequency'))).timestamp() * 1000)
-                    filter_string = filter_string + "and attributes.created >" + str(starttimeframe)
+                    filter_string = self.filter_string + "and attributes.created >" + str(starttimeframe)
+                else:
+                    filter_string = self.filter_string
                     logging.info("lastest filer_string for query")
-                    
+
                 runs = mlflow.search_runs(experiment_ids=experiment_ids,
-                    filter_string=self.filter_string,
+                    filter_string=filter_string,
                     max_results=self.max_results,
                     order_by=self.order_by, output_format='list')
 
