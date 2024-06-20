@@ -1,0 +1,109 @@
+# Learning plane CI/CD
+stages:
+  - build
+  - test
+  - release
+  - deploy
+
+# Common rules for each job, must be extended
+# - Using dind image for docker tasks
+# - Defining the application name and its docker image names
+# - Authenticating to the Gitlab Project registry to pull/push images
+# - Changing to the application path
+.learning-plane-common:
+  variables:
+    # Docker-in-Docker variables
+    DOCKER_DRIVER: overlay
+    # Application name
+    APPLICATION_NAME: "learning-plane"
+    # Don't modify any of the above
+    # Container names - Expected values of the variables:
+    # - CI_REGISTRY_IMAGE: registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-learning-plane
+    # - CI_COMMIT_REF_SLUG: Branch name at the moment (to change with tag)
+    CONTAINER_TEST_IMAGE: ${CI_REGISTRY_IMAGE}/${APPLICATION_NAME}:${CI_COMMIT_REF_SLUG}
+    CONTAINER_RELEASE_IMAGE: ${CI_REGISTRY_IMAGE}/${APPLICATION_NAME}:latest
+  services:
+    - name: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/docker:25.0.3-dind
+      alias: docker
+  before_script:
+    - echo "Authenticating to GitLab Project registry"
+    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
+    - echo "Running job in subdirectory $APPLICATION_NAME"
+    - cd $APPLICATION_NAME
+  rules:
+    - changes:
+      - $APPLICATION_NAME/**/*
+    # Tentative workaround for ensuring that code coverage is always executed when 'main' branch changes are accepted
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+learning-plane-build:              # This job runs in the build stage, which runs first.
+  stage: build
+  extends: .learning-plane-common
+  script:
+    - echo "Building the docker image..."
+    # Add the required compile code
+    - docker pull ${CONTAINER_RELEASE_IMAGE} || true
+    # Cache from the latest pulled image
+    - docker build --pull --cache-from ${CONTAINER_RELEASE_IMAGE} --tag ${CONTAINER_TEST_IMAGE} .
+    # Ensure that docker image is properly built
+    - docker run --rm ${CONTAINER_TEST_IMAGE} -h
+    - docker push ${CONTAINER_TEST_IMAGE}
+    - echo "Docker build complete."
+
+learning-plane-unit-test:          # This job runs in the test stage, which runs after the build stage.
+  stage: test
+  extends: .learning-plane-common
+  variables:
+    COVERAGE_PATH: ${CI_PROJECT_DIR}/coverage
+  script:
+    - echo "Running unit tests... This will take a while."
+    - docker build --pull --target test -t ${CONTAINER_TEST_IMAGE} .
+    # Execute the test image
+    - mkdir -p "${COVERAGE_PATH}"
+    - docker run --rm --name ${APPLICATION_NAME}-test -v ${COVERAGE_PATH}:/usr/application/coverage ${CONTAINER_TEST_IMAGE}
+
+  after_script:
+  # Check coverage files
+  - echo "Checking coverage files..."
+  - ls -lR "${COVERAGE_PATH}"
+
+  coverage: '/TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - coverage/*
+    reports:
+      junit: coverage/report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/coverage.xml
+
+learning-plane-release-image:
+  stage: release
+  extends: .learning-plane-common
+  rules: null
+  only:
+    - main
+  script:
+    - echo "Preparing release docker image"
+    - docker pull ${CONTAINER_TEST_IMAGE}
+    - docker tag ${CONTAINER_TEST_IMAGE} ${CONTAINER_RELEASE_IMAGE}
+    - docker push ${CONTAINER_RELEASE_IMAGE}
+    - echo "Release image created"
+
+learning-plane-deploy-job:       # This job runs in the deployment stage.
+  stage: deploy   # It only runs when *both* jobs in the test stage complete successfully.
+  # 'rules' is incompatible with 'only' - We must disable the 'extends' here
+  extends: .learning-plane-common
+  # Inherited 'rules' is incompatible with 'only'!
+  rules: null
+  only:
+    - main
+  environment: production
+  script:
+    - echo "Deploying application..."
+    # Add the required deployment commands here.
+    - echo "Application successfully deployed"
+  needs:
+    # Current GitLab EE 15.11.8-ee doesn't allow defining stages as dependencies, only jobs
+    - job: learning-plane-release-image              # Only deploy if release images have been successfully created

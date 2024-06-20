@@ -1,0 +1,18 @@
+label_selector_batch = client.V1LabelSelector(
+                             match_expressions=[
+                                 client.V1LabelSelectorRequirement(
+                                     key = 'seldon-app',
+                                     operator = 'In',
+                                     values = ['online-inference-single-online-inference-single']
+                                 )
+                             ]
+                  )
+    
+    
+podanti_selector_batch = client.V1PodAffinityTerm(topology_key='kubernetes.io/hostname',
+                                                  label_selector=[label_selector_batch])
+    
+podanti_affinity_batch = client.V1PodAntiAffinity(
+        required_during_scheduling_ignored_during_execution=podanti_selector_batch)
+
+affinity = client.V1Affinity(pod_anti_affinity=podanti_affinity_batch)

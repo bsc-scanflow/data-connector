@@ -1,0 +1,47 @@
+{
+    "preprocessing_1":{
+        "directory":"dummy_path",
+        "archive":"dummy_archive",
+        "data_structure":{
+            "key_values": [["timestamp", "datetime64[s]"]],
+            "pipeline_values": [["pipeline_id", "object"]],
+            "node_values": [["CPU", "float64"]],
+            "pipeline_telemetry": [["MEM", "float64"]]
+        },
+        "pipeline":"fake_pipeline",
+        "cluster":"fake_cluster"
+    },
+    "preprocessing_2":{
+        "directory":"tests/data",
+        "archive":"archive",
+        "data_structure":{
+            "key_values":[
+                ["timestamp","datetime64[s]"],
+                ["cluster","object"]
+            ],
+            "pipeline_values":[
+                ["pipeline_id","object"],
+                ["pipelines_status_avg_fps","float64"],
+                ["pipelines_status_avg_pipeline_latency","float64"],
+                ["pipelines_status_count_pipeline_latency","float64"],
+                ["pipelines_status_elapsed_time","float64"],
+                ["pipelines_status_frame_count","float64"],
+                ["pipelines_status_realtime_pipeline_latency","float64"],
+                ["pipelines_status_start_time","datetime64[s]"],
+                ["pipelines_status_sum_pipeline_latency","float64"],
+                ["pipelines_status_idelta_fps","float64"]
+            ],
+            "node_values":[
+                ["node_cpu_usage","float64"],
+                ["node_mem_usage","float64"]
+            ],
+            "pipeline_telemetry":[
+                ["pipelines_server_cpu_usage","float64"],
+                ["pipelines_server_mem_usage","float64"]
+            ]
+        },
+        "pipeline":"pipeline_id",
+        "cluster":"cluster"
+    }
+
+}

@@ -63,6 +63,8 @@ class ArgoDeployer(deployer.Deployer):
                 # cron_config = {"schedule": "1 0 * * *", "suspend": "false"}
                 #cron_config = {"schedule": "*/5 * * * *", "suspend": "false"}
                 cron_config = {"schedule": workflow.cron, "timezone": "Europe/Madrid"}
+            else:
+                cron_config = None
                 
             self.argoclient.configWorkflow(workflow_name, workflow_affinity, cron_config)
 
