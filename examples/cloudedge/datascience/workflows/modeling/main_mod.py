@@ -3,10 +3,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import logging
 
 from train import Training
 
+def log_env_variables():
+    logging.info("Logging environment variables:")
+    for key, value in os.environ.items():
+        logging.info(f"{key}: {value}")
+        print(f"{key}: {value}")  # Ensure printing as well
+
 def main(config) -> str:
+    log_env_variables()
 
     training_config = config.get("training")
 
@@ -47,6 +56,9 @@ def parse_args():
 
 
 if __name__ == "__main__":
+    # Set up logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    
     args = parse_args()
 
     with open(args.config, "r") as file:
