@@ -259,15 +259,9 @@ class Training_LSTM:
 
         mlflow.set_experiment("LSTM Experiment")
         models_dict = {}  # To store models for each cluster
-        # mlflow_logger = MLFlowLogger(experiment_name="LSTM Experiment")
 
         # Iterate through each cluster
         for cluster_id in self._data[self.clusters].unique():
-            # mlflow_logger = MLFlowLogger(
-                # experiment_name="LSTM Experiment",
-                # run_name=f"Cluster_{cluster_id}",
-            # )
-
             # Instantiate DataModule for the specific cluster
             data_module = LSTMDataModulePerCluster(
                 self._data,
@@ -291,29 +285,31 @@ class Training_LSTM:
             # trainer = pl.Trainer(max_epochs=self.epochs, logger=mlflow_logger)
             trainer = pl.Trainer(max_epochs=self.epochs, logger=False)
 
-            # Start MLflow run
-            mlflow.start_run(run_name=f"Cluster_{cluster_id}")
-            mlflow.pytorch.autolog()
+            with mlflow.start_run(run_name=f"Cluster_{cluster_id}") as run:
+                
+                # mlflow.pytorch.autolog()
+                trainer.fit(model,data_module)
+                # Save the trained model to the dictionary
+                models_dict[cluster_id] = model
 
-            trainer.fit(model, data_module)
+                mlflow.pytorch.log_model(
+                    model, 
+                    artifact_path=f"model_LSTM_{cluster_id}.pt", 
+                    registered_model_name=f"model_LSTM_{cluster_id}.pt"
+                    )
 
-            # Save the trained model to the dictionary
-            models_dict[cluster_id] = model
+                mlflow.log_metric('epochs', self.epochs)
+                mlflow.log_artifact(os.path.join(self.model_archive, f"LSTM_scaler_x_{cluster_id}.pkl"))
+                mlflow.log_artifact(os.path.join(self.model_archive, f"LSTM_scaler_y_{cluster_id}.pkl"))
 
-            # input_schema = Schema([
-            #     TensorSpec(np.dtype(np.float32), (-1, img_rows, img_cols)),
-            #     ]
-            # )
-            # output_schema = Schema([TensorSpec(np.dtype(np.float32), (-1, 10))])
-            # signature = ModelSignature(inputs=input_schema, outputs=output_schema)
+                train_loss = trainer.callback_metrics.get('train_loss')
+                val_loss = trainer.callback_metrics.get('val_loss')
 
-            model_name=f"model_LSTM_{cluster_id}.pt"
+                if train_loss is not None:
+                    mlflow.log_metric('train_loss', train_loss.item())
 
-            mlflow.pytorch.log_model(model, artifact_path=model_name, 
-                # signature=signature,
-                registered_model_name=model_name)
-
-
+                if val_loss is not None:
+                    mlflow.log_metric('val_loss', val_loss.item())
             mlflow.end_run()
 
         return models_dict
