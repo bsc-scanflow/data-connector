@@ -108,7 +108,14 @@ class ScanflowDeployerClient:
                 return False
 
         else: #local
-            result = self.deployerbackend.create_environment(scanflowEnv.namespace, scanflowEnv.secret.__dict__, scanflowEnv.tracker_config.__dict__, scanflowEnv.client_config.__dict__, app.tracker, app.agents)
+            result = self.deployerbackend.create_environment(
+                scanflowEnv.namespace, 
+                scanflowEnv.secret.to_dict(), 
+                scanflowEnv.tracker_config.to_dict(), 
+                scanflowEnv.client_config.to_dict(), 
+                app.tracker, 
+                app.agents
+            )
             return result
 
     async def clean_environment(self, 
