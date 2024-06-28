@@ -298,9 +298,21 @@ class Training_LSTM:
                     registered_model_name=f"model_LSTM_{cluster_id}.pt"
                     )
 
+                scaler_x = joblib.load(
+                os.path.join(
+                    self.model_archive, f"LSTM_scaler_x_{cluster_id}.pkl"
+                )
+                )
+
+                scaler_y = joblib.load(
+                    os.path.join(
+                        self.model_archive, f"LSTM_scaler_y_{cluster_id}.pkl"
+                    )
+                )
+
                 mlflow.log_metric('epochs', self.epochs)
-                mlflow.log_artifact(os.path.join(self.model_archive, f"LSTM_scaler_x_{cluster_id}.pkl"))
-                mlflow.log_artifact(os.path.join(self.model_archive, f"LSTM_scaler_y_{cluster_id}.pkl"))
+                mlflow.sklearn.log_model(scaler_x, artifact_path= f"LSTM_scaler_x_{cluster_id}",registered_model_name = f"LSTM_scaler_x_{cluster_id}")
+                mlflow.sklearn.log_model(scaler_y, artifact_path= f"LSTM_scaler_y_{cluster_id}",registered_model_name = f"LSTM_scaler_y_{cluster_id}")
 
                 train_loss = trainer.callback_metrics.get('train_loss')
                 val_loss = trainer.callback_metrics.get('val_loss')
