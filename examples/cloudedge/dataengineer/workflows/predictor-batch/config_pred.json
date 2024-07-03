@@ -1,0 +1,17 @@
+{
+    "prediction":{
+        "seq_length":10,
+        "cluster_id": "cluster",
+        "features":[
+            "node_cpu_usage",
+            "node_mem_usage",
+            "pipelines_server_cpu_usage",
+            "pipelines_server_mem_usage",
+            "pipelines_status_realtime_pipeline_latency",
+            "pipelines_status_idelta_fps"
+        ],
+        "target":[
+            "QoS"
+        ]
+    }
+}
