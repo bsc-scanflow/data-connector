@@ -1,0 +1,19 @@
+{
+    "preprocessing":{
+        "archive":"/app/data/data_preprocessed",
+        "key_values":[
+            "timestamp",
+            "cluster"
+        ],
+        "features":[
+            "pipelines_status_realtime_pipeline_latency",
+            "pipelines_status_idelta_fps",
+            "node_cpu_usage",
+            "node_mem_usage",
+            "pipelines_server_cpu_usage",
+            "pipelines_server_mem_usage",
+            "QoS"
+        ],
+        "output_dir": "/workflow"
+    }
+}

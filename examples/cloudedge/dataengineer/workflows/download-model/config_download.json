@@ -1,0 +1,10 @@
+{
+    "download":{
+        "model_name": ["model_LSTM_a6050a48-03a9-4d02-927a-878317624b52.pt",
+        "model_LSTM_c2313dca-f464-4fe3-96c6-cdbe530fe89e.pt",
+        "LSTM_scaler_x_a6050a48-03a9-4d02-927a-878317624b52",
+        "LSTM_scaler_y_a6050a48-03a9-4d02-927a-878317624b52",
+        "LSTM_scaler_x_c2313dca-f464-4fe3-96c6-cdbe530fe89e",
+        "LSTM_scaler_y_c2313dca-f464-4fe3-96c6-cdbe530fe89e"]
+    }
+}
