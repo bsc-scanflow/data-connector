@@ -2,6 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Define global imagePullSecrets if required
+imagePullSecrets: []
+
 basic:
   image_tag_version: "latest"
   #scanflow_server_image_name: "peiniliu/scanflow-server"
