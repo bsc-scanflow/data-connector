@@ -9,7 +9,7 @@ Data-connector agent
 - Currently mount scanflow
 
 # Step 2
-Copy custom sensor and actuator
+Copy custom sensor and actuator, example here: data-connector/examples/cloudedge/dataengineer/agents/planner
 - cp custom_sensor.py, custom_rules.py and custom_actuator.py /scanflow/scanflow/scanflow/agent/template/planner 
 - custom_sensor.py, get qos and compare
 - custom_rule.py, compare constaints
