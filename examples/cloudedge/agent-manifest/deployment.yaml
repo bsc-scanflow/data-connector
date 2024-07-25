@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planner-agent-deployment
+  labels:
+    app: planner-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: planner-agent
+  template:
+    metadata:
+      labels:
+        app: planner-agent
+    spec:
+      containers:
+      - name: planner-agent-container
+        image: registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/cloudedge-dataengineer-planner-agent
+        command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]        
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - mountPath: /scanflow
+          name: scanflow-storage
+      volumes:
+      - name: scanflow-storage
+        persistentVolumeClaim:
+          claimName: planner-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: planner-agent-service
+spec:
+  type: ClusterIP
+  selector:
+    app: planner-agent
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+
