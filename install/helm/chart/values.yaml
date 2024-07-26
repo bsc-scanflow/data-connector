@@ -3,6 +3,9 @@
 # Declare variables to be passed into your templates.
 
 # Define global imagePullSecrets if required
+# Example:
+# imagePullSecrets:
+#   - name: your-registry-secret
 imagePullSecrets: []
 
 basic:
