@@ -16,4 +16,4 @@ boto3==1.34.15
 couler-scanflow==0.1.2
 
 # Scanflow requirements not found in 'ncloud2' environment
-seldon-core==1.8.0
+#seldon-core==1.8.0
