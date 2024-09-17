@@ -3,7 +3,7 @@
 pyaml==23.12.0
 
 # Scanflow requirements - According to 'ncloud2' environment
-aiohttp==3.7.4.post0
+aiohttp
 click==8.1.7
 mlflow==2.9.2
 docker==4.1.0
