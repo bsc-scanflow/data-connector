@@ -5,8 +5,8 @@ on:
     branches:
       - feat/reactive-migration
     paths:
-      - examples/cloudedge_reactive_migration/**
-      - tutorials/cloudedge_reactive_migration/**
+      - examples/cloudedge-reactive-migration/**
+      - tutorials/cloudedge-reactive-migration/**
       - .github/workflows/reactive_migration.yaml
   workflow_dispatch: {}
 
@@ -17,7 +17,7 @@ env:
   MLFLOW_S3_ENDPOINT_URI: ${{ vars.CELLNEX_MLFLOW_S3_ENDPOINT_URI}}
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  REACTIVE_MIGRATION_DATAENGINEER_APP_DIR: "${{ github.workspace }}/examples/cloudedge_reactive_migration/dataengineer"
+  REACTIVE_MIGRATION_DATAENGINEER_APP_DIR: "${{ github.workspace }}/examples/cloudedge-reactive-migration/dataengineer"
   DOCKER_REGISTRY: ${{ vars.GITLAB_CLOUDSKIN_REGISTRY_URI }}
 jobs:
   jupyter-run:
@@ -30,7 +30,7 @@ jobs:
         python-version: '3.11.5'
         cache: 'pip'
     - name: Install Python requirements
-      run: pip install -r tutorials/cloudedge_reactive_migration/requirements.txt -r tutorials/cloudedge_reactive_migration/requirements-scanflow.txt
+      run: pip install -r tutorials/cloudedge-reactive-migration/requirements.txt -r tutorials/cloudedge-reactive-migration/requirements-scanflow.txt
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
@@ -47,7 +47,8 @@ jobs:
     - name: Execute Reactive Migration Notebook
       shell: bash
       run: |
-        cd tutorials/cloudedge_reactive_migration
+        cd tutorials/cloudedge-reactive-migration
         jupyter execute cloudedge-dataengineer.ipynb
         # debug: show local docker images
         docker images
+        echo "Finished"
