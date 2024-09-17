@@ -48,4 +48,4 @@ jobs:
       shell: bash
       run: |
         cd tutorials/cloudedge_reactive_migration
-        jupyter execute cloudedge-dataengineer.ipynb
+        jupyter execute --stdout cloudedge-dataengineer.ipynb
