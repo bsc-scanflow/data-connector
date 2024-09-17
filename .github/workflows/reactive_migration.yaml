@@ -5,6 +5,7 @@ on:
     paths:
       - examples/cloudedge_reactive_migration/**
       - tutorials/cloudedge_reactive_migration/**
+  workflow_dispatch:
 
 # Set environment variables
 env:
