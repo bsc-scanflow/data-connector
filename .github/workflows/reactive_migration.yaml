@@ -39,9 +39,9 @@ jobs:
         registry: ${{ vars.GITLAB_REGISTRY_URI }}
         username: ${{ secrets.GITLAB_REGISTRY_USERNAME }}
         password: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
-    - name: Pull image test
-      shell: bash
-      run: "docker pull registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/cloudedge-dataengineer-batch-inference-graph-predictor-batch:latest"
+    #- name: Pull image test
+    #  shell: bash
+    #  run: "docker pull registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/cloudedge-dataengineer-batch-inference-graph-predictor-batch:latest"
     - name: Execute Reactive Migration Notebook
       shell: bash
       run: |
