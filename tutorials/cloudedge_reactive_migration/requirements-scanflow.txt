@@ -6,7 +6,8 @@ pyaml==23.12.0
 aiohttp
 click==8.1.7
 mlflow==2.9.2
-docker==4.1.0
+# Bumping docker version due to 'http+docker' Schema bug: https://github.com/docker/docker-py/pull/3257#issuecomment-2173911243
+docker==7.1.0
 matplotlib==3.8.2
 
 fastapi==0.108.0
