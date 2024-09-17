@@ -26,7 +26,7 @@ jobs:
         python-version: '3.11.5'
         cache: 'pip'
     - name: Install Python requirements
-      run: pip install -r tutorials/cloudedge_reactive_migration/requirements.txt -r tutorials/cloudedge_reactive_migration/requirements-scanflow.txt
+      run: pip install --no-build-isolation -r tutorials/cloudedge_reactive_migration/requirements.txt -r tutorials/cloudedge_reactive_migration/requirements-scanflow.txt
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
