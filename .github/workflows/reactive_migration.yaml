@@ -49,3 +49,5 @@ jobs:
       run: |
         cd tutorials/cloudedge_reactive_migration
         jupyter execute cloudedge-dataengineer.ipynb
+        # debug: show local docker images
+        docker images
