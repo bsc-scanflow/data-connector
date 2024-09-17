@@ -52,5 +52,5 @@ jobs:
         # debug: show local docker images
         docker images
         # debug: try to push the image to the registry
-        docker push ${{ .vars.GITLAB_CLOUDSKIN_REGISTRY_URI}}/cloudedge-reactive-migration-dataengineer-batch-inference-reactive-graph-data-retrieval:latest
+        docker push ${{ .vars.GITLAB_CLOUDSKIN_REGISTRY_URI }}/cloudedge-reactive-migration-dataengineer-batch-inference-reactive-graph-data-retrieval:latest
         echo "Finished"
