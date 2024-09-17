@@ -12,12 +12,13 @@ on:
 
 # Set environment variables
 env:
+  WORKDIR: ${{ github.workspace }}
+  REACTIVE_MIGRATION_DATAENGINEER_APP_DIR: "examples/cloudedge-reactive-migration/dataengineer"
   SCANFLOW_SERVER_URI: ${{ vars.CELLNEX_SCANFLOW_SERVER_URI }}
   SCANFLOW_TRACKER_URI: ${{ vars.CELLNEX_SCANFLOW_TRACKER_URI }}
   MLFLOW_S3_ENDPOINT_URI: ${{ vars.CELLNEX_MLFLOW_S3_ENDPOINT_URI}}
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  REACTIVE_MIGRATION_DATAENGINEER_APP_DIR: "${{ github.workspace }}/examples/cloudedge-reactive-migration/dataengineer"
   DOCKER_REGISTRY: ${{ vars.GITLAB_CLOUDSKIN_REGISTRY_URI }}
 jobs:
   jupyter-run:
@@ -49,8 +50,12 @@ jobs:
       run: |
         cd tutorials/cloudedge-reactive-migration
         jupyter execute cloudedge-dataengineer.ipynb
+    - name: Workaround - Manually push docker images
+      shell: bash
+      run: |
         # debug: show local docker images
         docker images
-        # debug: try to push the image to the registry
+        # workaround: manually push the image to the registry while scanflow isn't ready
         docker push $DOCKER_REGISTRY/cloudedge-reactive-migration-dataengineer-batch-inference-reactive-graph-data-retrieval:latest
+        docker push $DOCKER_REGISTRY/cloudedge-reactive-migration-dataengineer-planner-agent:latest
         echo "Finished"
