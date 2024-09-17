@@ -2,11 +2,13 @@ name: Execute Reactive Migration notebook
 
 on:
   push:
+    branches:
+      - feat/reactive-migration
     paths:
       - examples/cloudedge_reactive_migration/**
       - tutorials/cloudedge_reactive_migration/**
       - .github/workflows/reactive_migration.yaml
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 # Set environment variables
 env:
@@ -34,7 +36,7 @@ jobs:
     - name: Login to GitLab Container registry
       uses: docker/login-action@v3
       with:
-        registry: ${{ secrets.GITLAB_REGISTRY_URI }}
+        registry: ${{ vars.GITLAB_REGISTRY_URI }}
         username: ${{ secrets.GITLAB_REGISTRY_USERNAME }}
         password: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
     - name: Pull image test
