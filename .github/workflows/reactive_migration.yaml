@@ -17,6 +17,7 @@ env:
   MLFLOW_S3_ENDPOINT_URI: ${{ vars.CELLNEX_MLFLOW_S3_ENDPOINT_URI}}
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  REACTIVE_MIGRATION_APP_DIR: "${{ vars.GITHUB_WORKSPACE}}/examples/cloudedge_reactive_migration"
 jobs:
   jupyter-run:
     runs-on: ubuntu-latest
@@ -45,5 +46,7 @@ jobs:
     - name: Execute Reactive Migration Notebook
       shell: bash
       run: |
+        echo ${{ vars.GITHUB_WORKSPACE }}
+        echo ${{ vars.REACTIVE_MIGRATION_APP_DIR }}
         cd tutorials/cloudedge_reactive_migration
         jupyter execute cloudedge-dataengineer.ipynb
