@@ -1,4 +1,5 @@
 # Required Jupyter packages
 jupyterlab
 nbclient # for 'jupyter execute' command
+
 # Notebook dependencies go here
