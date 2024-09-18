@@ -8,9 +8,11 @@
 # But couler-scanflow only accepts docker version 4.1.0, so we can't do it
 # Trying to pin a valid requests version prior to other changes
 requests==2.31.0
-couler-scanflow==0.1.2
-docker==4.1.0
-mlflow==2.9.2
+#couler-scanflow==0.1.2
+#couler @ git+https://github.com/couler-proj/couler@master
+couler @ git+https://github.com/couler-proj/couler@44fc694bfd2b84a42bd6ba3355649860bef6ebcd
+docker==7.1.0
+mlflow==2.16.2
 
 matplotlib==3.8.2
 
