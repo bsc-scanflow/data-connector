@@ -1,0 +1,13 @@
+#syntax=docker/dockerfile:1
+FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor
+
+COPY data-retrieval /app/data-retrieval
+# TODO: Add promcsv dependency
+# Clone via SSH works when using 'docker build --ssh default=$HOME/.ssh/<private key> ...
+#ADD git@gitlab-internal.bsc.es:datacentric-computing/cloudskin-project/cloudskin-learning-plane.git#main:libs/promcsv/promcsv /app/data-retrieval/promcsv 
+# Clone via HTTPS works when using 'docker build --secret id=GIT_AUTH_TOKEN' and GIT_AUTH_TOKEN is a Group/Project/Personal Access Token with at least role 'Reporter' and scope 'read_repository'
+# - 'Guest' role doesn't work with self-maintained GitLab instances and private repositories
+ADD https://gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-learning-plane.git#main:libs/promcsv/promcsv /app/data-retrieval/promcsv
+# TODO: Install procsv dependencies
+
+ENTRYPOINT ["python", "/app/data-retrieval/data-retrieval.py"]
