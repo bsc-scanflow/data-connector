@@ -53,12 +53,12 @@ jobs:
       run: |
         cd tutorials/cloudedge-reactive-migration
         jupyter execute cloudedge-dataengineer.ipynb
-    - name: Workaround - Manually push docker images
-      shell: bash
-      run: |
-        # debug: show local docker images
-        docker images
-        # workaround: manually push the image to the registry while scanflow isn't ready
-        FIXED_TAG=$(echo $DOCKER_TAG | sed 's@/@-@g')
-        docker images --format "{{.Repository}}:{{.Tag}}" --filter=reference="$DOCKER_REGISTRY/*:$FIXED_TAG" | xargs -I {} docker push {}
-        echo "Finished"
+    # - name: Workaround - Manually push docker images
+    #   shell: bash
+    #   run: |
+    #     # debug: show local docker images
+    #     docker images
+    #     # workaround: manually push the image to the registry while scanflow isn't ready
+    #     FIXED_TAG=$(echo $DOCKER_TAG | sed 's@/@-@g')
+    #     docker images --format "{{.Repository}}:{{.Tag}}" --filter=reference="$DOCKER_REGISTRY/*:$FIXED_TAG" | xargs -I {} docker push {}
+    #     echo "Finished"
