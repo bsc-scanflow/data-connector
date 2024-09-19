@@ -108,7 +108,7 @@ class DockerBuilder(builder.Builder):
 
                     try:
                         #TODOs: add the cred to k8s secret
-                        auth_config_gitlab = {
+                        auth_config = {
                             'username': env.get_env("DOCKER_REGISTRY_USERNAME"),
                             'password': env.get_env("DOCKER_REGISTRY_PASSWORD")
                         } if env.get_env("DOCKER_REGISTRY_USERNAME") else None
@@ -116,7 +116,7 @@ class DockerBuilder(builder.Builder):
                         logs = self.client.images.push(
                             repository=f"{image_name}", 
                             tag=image_tag,
-                            auth_config = auth_config_gitlab
+                            auth_config = auth_config
                         )
 
                         # Push method doesn't raise an exception when failing, although docs say they raise a docker.errors.APIError
