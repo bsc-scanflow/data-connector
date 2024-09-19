@@ -60,5 +60,5 @@ jobs:
         docker images
         # workaround: manually push the image to the registry while scanflow isn't ready
         FIXED_TAG=$(echo $DOCKER_TAG | sed 's@/@-@g')
-        docker images --format "{{.Repository}}:{{.Tag}}" --filter=reference="$DOCKER_REGISTRY/*:$FIXED_TAG' | xargs -I {} docker push {}
+        docker images --format "{{.Repository}}:{{.Tag}}" --filter=reference="$DOCKER_REGISTRY/*:$FIXED_TAG" | xargs -I {} docker push {}
         echo "Finished"
