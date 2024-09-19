@@ -5,7 +5,7 @@ import json
 from textwrap import dedent
 
 import scanflow.builder.builder as builder
-
+from scanflow.tools import env
 from scanflow.app import Application, Executor, Service, Node, Workflow, Tracker, Agent, Sensor, IntervalTrigger, DateTrigger, CronTrigger, BaseTrigger
 from datetime import datetime
 
@@ -62,6 +62,10 @@ class DockerBuilder(builder.Builder):
 
 
     def __build_image_to_registry(self, name, long_name, source):
+        
+        image_tag = env.get_env("DOCKER_TAG")
+        if not image_tag:
+            image_tag = "latest"
 
         if isinstance(source, Agent):
             image_name = f"{self.registry}/{name}-{long_name}-{source.name}-agent"
@@ -70,8 +74,8 @@ class DockerBuilder(builder.Builder):
         logging.info(f"Building image {image_name}")
 
         try:
-            image = self.client.images.get(image_name)
-            logging.info(f"[+] Image [{image_name}] has been found in repository. {image.tags[0]}.")
+            image = self.client.images.get(f"{image_name}:{image_tag}")
+            logging.info(f"[+] Image [{image_name}:{image_tag}] has been found in repository. {image.tags[0]}.")
             return image.tags[0]
     
         except docker.api.client.DockerException as e:
@@ -93,30 +97,37 @@ class DockerBuilder(builder.Builder):
             logging.info(f"dockerfile for using {dockerfile} from {build_path}")
             
             try:
-                if dockerfile is not None:    
-                    image, stat = self.client.images.build(path=build_path,
-                                          dockerfile=dockerfile,
-                                        tag=image_name)
+                if dockerfile is not None:
+                        
+                    image, stat = self.client.images.build(
+                        path=build_path,
+                        dockerfile=dockerfile,
+                        tag=f"{image_name}:{image_tag}"
+                    )
                     logging.info(f'[+] Image [{source.name}] was built successfully. image_tag {image.tags}')
 
                     try:
-                        # self.client.images.push(image_name)
                         #TODOs: add the cred to k8s secret
-                        encoded_creds_gitlab = "Y2xvdWRza2luLW5jbG91ZDI6cE54emZQNm5TWWJMeEJWM1lHaGk="
-                        decoded_creds_gitlab = base64.b64decode(encoded_creds_gitlab).decode('utf-8')
-                        username_gitlab, password_gitlab = decoded_creds_gitlab.split(':')
-
                         auth_config_gitlab = {
-                            'username': username_gitlab,
-                            'password': password_gitlab
-                        }
-                        self.client.images.push(repository=f"{self.registry}/{image_name}", 
-                                                tag="latest",
-                                                auth_config=auth_config_gitlab)
+                            'username': env.get_env("DOCKER_REGISTRY_USERNAME"),
+                            'password': env.get_env("DOCKER_REGISTRY_PASSWORD")
+                        } if env.get_env("DOCKER_REGISTRY_USERNAME") else None
+                        
+                        logs = self.client.images.push(
+                            repository=f"{image_name}", 
+                            tag=image_tag,
+                            auth_config = auth_config_gitlab
+                        )
 
+                        # Push method doesn't raise an exception when failing, although docs say they raise a docker.errors.APIError
+                        # Workaround: poor man's error catch:
+                        for line in logs.split('\n'):
+                            if "errorDetail" in line:
+                                raise docker.errors.APIError(line)
+                        
                         logging.info(f'[+] Image [{source.name}] was pushed to registry successfully.')
-                    except docker.api.client.DockerException as e:
-                        logging.info(f'[+] Image [{source.name}] push failed {e}.')
+                    except (docker.api.client.DockerException, docker.errors.APIError) as e:
+                        logging.info(f'[-] Image [{source.name}] push failed {e}.')
 
                     return image.tags[0]
             except docker.api.client.DockerException as e:
