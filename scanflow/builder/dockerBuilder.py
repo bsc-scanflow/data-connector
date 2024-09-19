@@ -63,7 +63,16 @@ class DockerBuilder(builder.Builder):
 
     def __build_image_to_registry(self, name, long_name, source):
         
-        image_tag = env.get_env("DOCKER_TAG")
+        # Translate any undesired character in tags
+        image_tag = env.get_env("DOCKER_TAG").translate(
+            str.maketrans(
+                {
+                    "/": "-",
+                    "'": "-",
+                    "\\": "-"
+                }
+            )
+        )
         if not image_tag:
             image_tag = "latest"
 
