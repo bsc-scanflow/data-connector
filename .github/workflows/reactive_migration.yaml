@@ -20,6 +20,9 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   DOCKER_REGISTRY: ${{ vars.GITLAB_CLOUDSKIN_REGISTRY_URI }}
+  DOCKER_TAG: ${{ github.ref_name }}
+  DOCKER_REGISTRY_USERNAME: ${{ secrets.GITLAB_REGISTRY_USERNAME }}
+  DOCKER_REGISTRY_PASSWORD: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
 jobs:
   jupyter-run:
     runs-on: ubuntu-latest
