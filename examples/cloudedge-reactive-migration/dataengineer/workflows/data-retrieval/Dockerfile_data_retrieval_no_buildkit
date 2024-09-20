@@ -20,6 +20,7 @@ ARG GIT_AUTH_TOKEN
 
 # Clone the repository instead of fetching it during build
 RUN git clone --depth 1 https://$GIT_AUTH_USERNAME:$GIT_AUTH_TOKEN@gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-learning-plane.git && \
+    mkdir -p /app/data-retrieval/promcsv && \
     mv cloudskin-learning-plane/libs/promcsv/promcsv /app/data-retrieval/
 
 # Install dependencies and remove git repository
