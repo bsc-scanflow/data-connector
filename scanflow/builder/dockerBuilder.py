@@ -107,20 +107,26 @@ class DockerBuilder(builder.Builder):
             
             try:
                 if dockerfile is not None:
-                        
+                    #TODOs: add the cred to k8s secret
+                    auth_config = {
+                        'username': env.get_env("DOCKER_REGISTRY_USERNAME"),
+                        'password': env.get_env("DOCKER_REGISTRY_PASSWORD")
+                    } if env.get_env("DOCKER_REGISTRY_USERNAME") else None
+                    
+                    # Workaround: include Git authentication credentials as buildargs to fetch git repositories during build
                     image, stat = self.client.images.build(
                         path=build_path,
                         dockerfile=dockerfile,
+                        buildargs={
+                            "GIT_AUTH_USERNAME": auth_config['username'],
+                            "GIT_AUTH_TOKEN": auth_config['password']
+                        } if auth_config else None,
                         tag=f"{image_name}:{image_tag}"
                     )
                     logging.info(f'[+] Image [{source.name}] was built successfully. image_tag {image.tags}')
 
                     try:
-                        #TODOs: add the cred to k8s secret
-                        auth_config = {
-                            'username': env.get_env("DOCKER_REGISTRY_USERNAME"),
-                            'password': env.get_env("DOCKER_REGISTRY_PASSWORD")
-                        } if env.get_env("DOCKER_REGISTRY_USERNAME") else None
+                        
                         
                         logs = self.client.images.push(
                             repository=f"{image_name}", 
