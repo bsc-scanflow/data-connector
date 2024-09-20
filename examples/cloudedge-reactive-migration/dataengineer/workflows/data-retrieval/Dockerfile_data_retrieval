@@ -1,12 +1,40 @@
-FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor
+# Workaround: define Git redentials as BuildArgs instead of Secrets
+# - Python Docker SDK doesn't allow its client to create secrets if not using Docker Swarm
+# - It also doesn't use BuildKit yet but the old/deprecated build infrastructure: https://github.com/docker/docker-py/issues/2230
+# - More modern Dockerfiles can't be built
+ARG GIT_AUTH_USERNAME
+ARG GIT_AUTH_TOKEN
 
-COPY data-retrieval /app/data-retrieval
+# 1st stage - build
+# =================
+FROM scratch AS build
+ARG GIT_AUTH_USERNAME
+ARG GIT_AUTH_TOKEN
+
 # TODO: Add promcsv dependency
 # Clone via SSH works when using 'docker build --ssh default=$HOME/.ssh/<private key> ...
-#ADD git@gitlab-internal.bsc.es:datacentric-computing/cloudskin-project/cloudskin-learning-plane.git#main:libs/promcsv/promcsv /app/data-retrieval/promcsv 
+# ADD git@gitlab-internal.bsc.es:datacentric-computing/cloudskin-project/cloudskin-learning-plane.git#main:libs/promcsv/promcsv /app/data-retrieval/promcsv 
 # Clone via HTTPS works when using 'docker build --secret id=GIT_AUTH_TOKEN' and GIT_AUTH_TOKEN is a Group/Project/Personal Access Token with at least role 'Reporter' and scope 'read_repository'
 # - 'Guest' role doesn't work with self-maintained GitLab instances and private repositories
-ADD https://gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-learning-plane.git#main:libs/promcsv/promcsv /app/data-retrieval/promcsv
-# TODO: Install procsv dependencies
+# ADD https://gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-learning-plane.git#main:libs/promcsv/promcsv /app/data-retrieval/promcsv
+
+# Workaround: use BuildArgs for the Git credentials
+# - Retrieve PromCSV library
+ADD https://$GIT_AUTH_USERNAME:$GIT_AUTH_TOKEN@gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-learning-plane.git#main:libs/promcsv /promcsv
+
+
+# 2nd stage - release
+# ===================
+FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor AS release
+
+# Install dependencies
+RUN --mount=type=bind,from=build,source=/promcsv,target=/tmp/promcsv pip install --no-cache -r /tmp/promcsv/requirements.txt
+
+# Retrieve dependencies from build stage
+COPY --from=build /promcsv/promcsv /app/data-retrieval/promcsv
+
+# Copy application code
+COPY data-retrieval /app/data-retrieval
+
 
 ENTRYPOINT ["python", "/app/data-retrieval/data-retrieval.py"]
