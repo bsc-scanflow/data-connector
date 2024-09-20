@@ -72,7 +72,7 @@ def store_query_results(app_name:str, team_name:str , query_results:str):
 @click.option("--app_name", default=None, type=str)
 @click.option("--team_name", default=None, type=str)
 # PromCSV arguments
-@click.option("--promcsv_config", default=None, type=click.File('rb'))
+@click.option("--promcsv_config", default="/app/data-retrieval/promql_queries.json", type=click.File('rb'))
 def main(app_name, team_name, promcsv_config):
     
     # Retrieve application metrics from Prometheus
