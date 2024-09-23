@@ -46,7 +46,6 @@
 #     #}
 
 
-
 from typing import Optional
 
 class ScanflowSecret:
@@ -69,11 +68,26 @@ class ScanflowSecret:
         }
 
 class ScanflowImagePullSecret():
-    registry: Optional[str] = None
-    name: Optional[str] = None
-    username: Optional[str] = None
-    password: Optional[str] = None
-    email: Optional[str] = None
+    def __init__(self,
+                registry: Optional[str] = None,
+                name: Optional[str] = None,
+                username: Optional[str] = None,
+                password: Optional[str] = None,
+                email: Optional[str] = None) -> None:
+        self.registry = registry
+        self.name = name
+        self.username = username
+        self.password = password
+        self.email = email
+    
+    def to_dict(self):
+        return {
+            "registry": self.registry,
+            "name": self.name,
+            "username": self.username 
+        }
+
+
 
 class ScanflowTrackerConfig:
     def __init__(self,
@@ -121,9 +135,11 @@ class ScanflowEnvironment:
         return {
             "namespace": self.namespace,
             "secret": self.secret.to_dict(),
+            "image_pull_secret": self.image_pull_secret.to_dict(),
             "tracker_config": self.tracker_config.to_dict(),
             "client_config": self.client_config.to_dict()
         }
+
 
 
 
