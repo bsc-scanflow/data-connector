@@ -12,7 +12,8 @@ class Agent:
                  template: str = None,
                  sensors: List[Sensor] = None,
                  dockerfile: str = None,
-                 image: str = None):
+                 image: str = None,
+                 image_pull_secret: str = None):
         """
            we provide several templates. the functions within the templates need to be used together with the agent file.
            user can also define their own type of agent
@@ -23,6 +24,7 @@ class Agent:
         self.sensors = sensors
         self.dockerfile = dockerfile
         self.image = image
+        self.image_pull_secret = image_pull_secret
 
     def to_dict(self):
         tmp_dict = {}

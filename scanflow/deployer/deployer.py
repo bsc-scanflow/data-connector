@@ -7,7 +7,7 @@ from typing import List
 from scanflow.app import Application, Tracker, Workflow, Agent
 
 from scanflow.templates import Kubernetes
-
+from .env import ScanflowImagePullSecret, ScanflowEnvironment
 
 logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
@@ -26,7 +26,8 @@ class Deployer():
                            scanflowTrackerConfig: dict,
                            scanflowClientConfig: dict,
                            tracker : Tracker = None,
-                           agents: List[Agent] = None):
+                           agents: List[Agent] = None,
+                           docker_creds: ScanflowImagePullSecret = None):
         """
           create namespace, role, agents...
         """
@@ -41,11 +42,18 @@ class Deployer():
         step4 = self.__create_configmap_tracker(namespace, scanflowTrackerConfig)
         # 5. create client configmap
         step5 = self.__create_configmap_client(namespace, scanflowClientConfig)
-        # 6. start local tracker 
-        step6 = self.__start_local_tracker(namespace, tracker)
 
         #tempo mount scanflow
         step8 = self.__create_scanflow_volume(namespace)
+
+        # Deploy private container registry credentials secret if defined
+        if docker_creds:
+            step_9 = self.__create_image_pull_secret(namespace, docker_creds)
+        else:
+            step_9 = True
+
+        # 6. start local tracker 
+        step6 = self.__start_local_tracker(namespace, tracker)
 
         # 7. start_agent if has
         if agents is not None:
@@ -53,7 +61,7 @@ class Deployer():
         else:
             step7 = True
 
-        return  step1 and step2 and step3 and step4 and step5 and step6 and step7 and step8 
+        return  step1 and step2 and step3 and step4 and step5 and step6 and step7 and step8 and step_9
 
     def __create_scanflow_volume(self,namespace):
         #scanflow volume, we have to pack scanflow, now we mount the volume
@@ -77,7 +85,8 @@ class Deployer():
 
     def clean_environment(self,
                           namespace: str,
-                          agents: List[Agent] = None):
+                          agents: List[Agent] = None,
+                          scanflow_env: ScanflowEnvironment = None):
         """
            delete env and stop agents
         """
@@ -91,7 +100,12 @@ class Deployer():
         # 3. delete others
         step3 = self.__delete_configmap_tracker(namespace) 
         step4 = self.__delete_configmap_client(namespace) 
-        step5 = self.__delete_secret(namespace) 
+        step5 = self.__delete_secret(namespace)
+        # 9. Remove image pull secrets if any
+        if scanflow_env and scanflow_env.image_pull_secret:
+            step_9 = self.__delete_image_pull_secret(namespace, scanflow_env.image_pull_secret)
+        else:
+            step_9 = True
         step6 = self.__delete_role(namespace) 
         # 4. delete namespace
         step7 = self.__delete_namespace(namespace)
@@ -99,7 +113,7 @@ class Deployer():
         # tempo
         step8 = self.__delete_scanflow_volume(namespace)
 
-        return step1 and step2 and step3 and step4 and step5 and step6 and step7 and step8
+        return step1 and step2 and step3 and step4 and step5 and step6 and step7 and step8 and step_9
 
     def __create_namespace(self, namespace):
         logging.info(f'[++]Creating namespace "{namespace}"')
@@ -126,6 +140,18 @@ class Deployer():
     def __delete_secret(self, namespace):
         logging.info(f'[++]Delete s3 secret scanflow-secret')
         return self.kubeclient.delete_secret(namespace, "scanflow-secret")
+
+    def __create_image_pull_secret(self, namespace, cred_data):
+        logging.info(f'[++]Creating Image Pull Secret for {cred_data.registry}')
+
+        # Compose the Image Pull Secret body
+        image_pull_secret = self.kubeclient.build_image_pull_secret(cred_data.name, namespace, cred_data)
+
+        return self.kubeclient.create_secret(namespace, image_pull_secret)
+
+    def __delete_image_pull_secret(self, namespace, cred_data):
+        logging.info(f"[++]Deleting Image Pull Secret {cred_data.name}")
+        return self.kubeclient.delete_secret(namespace, cred_data.name)
 
     def __create_configmap_tracker(self, namespace, data):
         logging.info(f"[++]Creating tracker configmap {data}")
@@ -154,16 +180,25 @@ class Deployer():
         tracker_name = "scanflow-tracker"
         logging.info(f"[+] Starting local tracker: [{tracker_name}].")
         # deployment
+        logging.debug(f"[D] Building environment from source...")
         env_from_list = self.kubeclient.build_env_from_source(
             secret_ref = "scanflow-secret",
             config_map_ref = "scanflow-tracker-env"
         )
-        deployment = self.kubeclient.build_deployment(namespace = namespace, 
-        name = tracker_name, 
-        label = "scanflow", 
-        image = tracker.image,
-        env_from = env_from_list)
+        logging.debug(f"[D] Building deployment...")
+        deployment = self.kubeclient.build_deployment(
+            namespace = namespace, 
+            name = tracker_name, 
+            label = "scanflow", 
+            image = tracker.image,
+            image_pull_secret=self.kubeclient.get_object_reference(
+                namespace = namespace,
+                name = tracker.image_pull_secret
+            ) if tracker.image_pull_secret else None,
+            env_from = env_from_list
+        )
 
+        logging.debug(f"[D] Creating tracker deployment")
         step1 = self.kubeclient.create_deployment(namespace, deployment)
         logging.info(f"[+] Created tracker Deployment {step1}")
 
@@ -212,14 +247,20 @@ class Deployer():
         )
         volumes = self.kubeclient.build_volumes(scanflowpath=f"scanflow-{namespace}")
         volumeMounts = self.kubeclient.build_volumeMounts(scanflowpath="/scanflow")
-        deployment = self.kubeclient.build_deployment(namespace = namespace, 
-        name = agent_name, 
-        label = "agent", 
-        image = agent.image,
-        volumes = volumes,
-        env_from = env_from_list,
-        env=env,
-        volumeMounts = volumeMounts)
+        deployment = self.kubeclient.build_deployment(
+            namespace = namespace, 
+            name = agent_name, 
+            label = "agent", 
+            image = agent.image,
+            image_pull_secret=self.kubeclient.get_object_reference(
+                namespace = namespace,
+                name = agent.image_pull_secret
+            ) if agent.image_pull_secret else None,
+            volumes = volumes,
+            env_from = env_from_list,
+            env=env,
+            volumeMounts = volumeMounts
+        )
 
         step1 = self.kubeclient.create_deployment(namespace, deployment)
         logging.info(f"[+] Created {agent_name} Deployment {step1}")

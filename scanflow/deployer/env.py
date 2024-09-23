@@ -6,6 +6,14 @@ class ScanflowSecret():
     MLFLOW_S3_ENDPOINT_URL : Optional[str] = "http://minio.scanflow-server.svc.cluster.local"
     AWS_ENDPOINT_URL: Optional[str] = "http://minio.scanflow-server.svc.cluster.local"
 
+class ScanflowImagePullSecret():
+    registry: Optional[str] = None
+    name: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    email: Optional[str] = None
+
+
 class ScanflowTrackerConfig():
     TRACKER_STORAGE: Optional[str] = "postgresql://postgres:scanflow123@scanflow-postgres.scanflow-server.svc.cluster.local/scanflow-default"
     TRACKER_ARTIFACT: Optional[str] = "s3://scanflow-default"
@@ -25,6 +33,7 @@ class ScanflowEnvironment():
     #    "AWS_SECRET_ACCESS_KEY": "admin123", 
     #    "MLFLOW_S3_ENDPOINT_URL": "http://minio.minio-system.svc.cluster.local:9000" 
     #}
+    image_pull_secret: Optional[ScanflowImagePullSecret] = ScanflowImagePullSecret()
     #configmap tracker
     tracker_config : Optional[ScanflowTrackerConfig] = ScanflowTrackerConfig()
     #configmap_tracker_data : Optional[dict] = {

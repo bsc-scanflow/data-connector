@@ -26,18 +26,18 @@ class DockerBuilder(builder.Builder):
         super(DockerBuilder, self).__init__(registry)
         self.client = docker.from_env()
 
-    def build_ScanflowApplication(self, app: Application, trackerPort: int):
+    def build_ScanflowApplication(self, app: Application, trackerPort: int, image_pull_secret: str = None):
         self.paths = get_scanflow_paths(app.app_dir)
         if app.agents is not None:
             self.build_ScanflowAgents(app.app_name, app.team_name, app.agents)
         if app.workflows is not None:
             self.build_ScanflowWorkflows(app.app_name, app.team_name, app.workflows)
         if app.tracker is None:
-            app.tracker = self.build_ScanflowTracker(nodePort=trackerPort)
+            app.tracker = self.build_ScanflowTracker(nodePort=trackerPort, image_pull_secret=image_pull_secret)
         return app
     
-    def build_ScanflowTracker(self, nodePort: int):
-        return Tracker(nodePort)
+    def build_ScanflowTracker(self, nodePort: int, image_pull_secret: str):
+        return Tracker(nodePort=nodePort, image_pull_secret=image_pull_secret)
 
     def build_ScanflowAgents(self, name, team_name, agents: List[Agent]):
         for agent in agents:

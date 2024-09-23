@@ -65,9 +65,11 @@ class ScanflowClient:
             logging.info(f"unknown builder backend {builder}")
 
     def build_ScanflowApplication(self,
-                                  app: Application, trackerPort: int):
+                                  app: Application,
+                                  trackerPort: int,
+                                  image_pull_secret: str = None):
         #build scanflowapp
-        return self.builderbackend.build_ScanflowApplication(app, trackerPort)
+        return self.builderbackend.build_ScanflowApplication(app, trackerPort, image_pull_secret=image_pull_secret)
 
 ###   Scanflow graph
 
@@ -173,13 +175,16 @@ class ScanflowClient:
                             next_run_time: datetime = None):
         return Sensor(name, isCustom, func_name, trigger, args, kwargs, next_run_time)
 
-    def ScanflowAgent(self,
-                      name: str,
-                      template: str = None,
-                      sensors: List[Sensor] = None,
-                      dockerfile: str = None,
-                      image: str = None):
-        return Agent(name, template, sensors, dockerfile, image)
+    def ScanflowAgent(
+            self,
+            name: str,
+            template: str = None,
+            sensors: List[Sensor] = None,
+            dockerfile: str = None,
+            image: str = None,
+            image_pull_secret: str = None
+        ):
+        return Agent(name, template, sensors, dockerfile, image, image_pull_secret=image_pull_secret)
 
 
 #scalers

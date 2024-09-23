@@ -16,13 +16,13 @@ import requests
 import json
 
 from scanflow.tools.scanflowtools import check_verbosity
-from scanflow.deployer.env import ScanflowClientConfig, ScanflowTrackerConfig, ScanflowSecret, ScanflowEnvironment
+from scanflow.deployer.env import ScanflowEnvironment
 from scanflow.app import Application, Workflow, Executor
 from .httpClient import http_client
 
 logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.DEBUG)
 
 class ScanflowDeployerClient:
     def __init__(self,
@@ -108,11 +108,20 @@ class ScanflowDeployerClient:
                 return False
 
         else: #local
-            result = self.deployerbackend.create_environment(scanflowEnv.namespace, scanflowEnv.secret.__dict__, scanflowEnv.tracker_config.__dict__, scanflowEnv.client_config.__dict__, app.tracker, app.agents)
+            result = self.deployerbackend.create_environment(
+                namespace=scanflowEnv.namespace,
+                scanflowSecret=scanflowEnv.secret.__dict__,
+                scanflowTrackerConfig=scanflowEnv.tracker_config.__dict__,
+                scanflowClientConfig=scanflowEnv.client_config.__dict__,
+                tracker=app.tracker,
+                agents=app.agents,
+                docker_creds=scanflowEnv.image_pull_secret
+            )
             return result
 
     async def clean_environment(self, 
-                          app: Application):
+                          app: Application,
+                          scanflow_env: ScanflowEnvironment = None):
         if self.user_type == "incluster":
             url = f"{self.scanflow_server_uri}/deployer/clean_environment"
             logging.info(f"{json.dumps(app.to_dict())}")
@@ -126,8 +135,8 @@ class ScanflowDeployerClient:
                 logging.error(f"clean scanflow application env error: {text['detail']}")
                 return False
         else: #local
-            namespace = f"scanflow-{app.app_name}-{app.team_name}" 
-            return self.deployerbackend.clean_environment(namespace, app.agents)
+            namespace = scanflow_env.namespace if scanflow_env else f"scanflow-{app.app_name}-{app.team_name}" 
+            return self.deployerbackend.clean_environment(namespace, app.agents, scanflow_env)
 
     async def start_agents(self,
                           app: Application):

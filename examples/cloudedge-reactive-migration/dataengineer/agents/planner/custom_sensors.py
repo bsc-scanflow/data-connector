@@ -16,7 +16,7 @@ def tock():
 
 #example 1: count number of predictions in last 5 min
 @sensor(nodes=["predictor-reactive"])
-async def watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
+async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
     print(args)
     print(kwargs)
     
