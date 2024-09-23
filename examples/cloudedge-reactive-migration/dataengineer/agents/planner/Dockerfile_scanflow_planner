@@ -7,6 +7,7 @@ ENV AGENT_TYPE planner
 RUN mkdir /agent
 COPY planner /agent
 
-ENV sensors '{"watch_qos": {"name": "watch_qos", "func": "scanflow.agent.template.planner.custom_sensors.watch_qos", "trigger": {"type": "interval", "weeks": 0, "days": 0, "hours": 0, "minutes": 5, "seconds": 0, "start_date": null, "end_date": null, "timezone": null, "jitter": null}, "kwargs": {"frequency": 300}}}' 
+ENV sensors '{"reactive_watch_qos": {"name": "reactive_watch_qos", "func": "scanflow.agent.template.planner.custom_sensors.reactive_watch_qos", "trigger": {"type": "interval", "weeks": 0, "days": 0, "hours": 0, "minutes": 5, "seconds": 0, "start_date": null, "end_date": null, "timezone": null, "jitter": null}, "kwargs": {"frequency": 300}}}' 
 
-CMD [ "cp /agent/* /scanflow/scanflow/scanflow/agent/template/planner && uvicorn main:agent --reload --host 0.0.0.0 --port 8080" ]
+#CMD [ "cp /agent/* /scanflow/scanflow/scanflow/agent/template/planner && uvicorn main:agent --reload --host 0.0.0.0 --port 8080" ]
+CMD [ "sleep infinity" ]
