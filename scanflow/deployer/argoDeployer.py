@@ -62,7 +62,11 @@ class ArgoDeployer(deployer.Deployer):
                 # schedule to run at one minute past midnight (00:01) every day
                 # cron_config = {"schedule": "1 0 * * *", "suspend": "false"}
                 #cron_config = {"schedule": "*/5 * * * *", "suspend": "false"}
-                cron_config = {"schedule": workflow.cron, "timezone": "Europe/Madrid"}
+                cron_config = {
+                    "schedule": workflow.cron,
+                    "timezone": "Europe/Madrid",
+                    "suspend": False
+                }
             else:
                 cron_config = None
                 
@@ -146,13 +150,16 @@ class ArgoDeployer(deployer.Deployer):
 
             argoWorkflow = self.argoclient.submitWorkflow(namespace)
             logging.info(f"[+++] Workflow: [{workflow_name}] has been submitted to argo {argoWorkflow}")
-
-            if workflow.cron:
-                #TODO: couler bug for cron workflow, need to change suspend to true or false, now it turns into 'true' 'false'
-                #kubectl patch cronworkflows.argoproj.io -n scanflow-cloudedge-dataengineer batch-inference-graph --type='json' -p='[{"op": "replace", "path": "/spec/suspend", "value": false}]'
-                self.kubeclient.patch_cron_workflow(namespace, 
-                                                    workflow_name, 
-                                                    False)
+            
+            # OBSOLETE: You can overwrite the default "false" value of "spec.suspend" field when configuring the "cron_config"
+            # There's no need to patch it afterwards
+            
+            #if workflow.cron:
+            #    #TODO: couler bug for cron workflow, need to change suspend to true or false, now it turns into 'true' 'false'
+            #    #kubectl patch cronworkflows.argoproj.io -n scanflow-cloudedge-dataengineer batch-inference-graph --type='json' -p='[{"op": "replace", "path": "/spec/suspend", "value": false}]'
+            #    self.kubeclient.patch_cron_workflow(namespace, 
+            #                                        workflow_name, 
+            #                                        False)
 
             if argoWorkflow is not None:
                 return True
