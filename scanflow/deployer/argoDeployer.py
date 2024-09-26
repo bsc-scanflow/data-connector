@@ -149,7 +149,6 @@ class ArgoDeployer(deployer.Deployer):
             self.argoclient.argoDag(edge_graph)
 
             argoWorkflow = self.argoclient.submitWorkflow(namespace)
-            logging.info(f"{argoWorkflow.__dict__}")
             logging.info(f"[+++] Workflow: [{workflow_name}] has been submitted to argo {argoWorkflow}")
             
             # OBSOLETE: You can overwrite the default "false" value of "spec.suspend" field when configuring the "cron_config"
