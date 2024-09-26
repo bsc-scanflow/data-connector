@@ -68,8 +68,6 @@ def store_query_results(app_name:str, team_name:str , query_results:str):
         team_name=team_name,
         app_dir=os.path.dirname(query_results)
     )
-    # If we wanted to download artifacts from the MLFlow experiment we'd use this method
-    #client.download_artifacts()
 
 @click.command(help="Retrieve real-time data from Prometheus")
 # from main scanflow
