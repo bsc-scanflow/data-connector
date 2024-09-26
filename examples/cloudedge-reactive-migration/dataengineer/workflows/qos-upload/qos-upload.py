@@ -48,13 +48,13 @@ def upload(name: str, app_name: str, team_name: str, csv_path: str) -> None:
     # Load the CSV file into a DataFrame
     df = pd.read_csv(csv_filename)
 
-    # Filter the "pipelines_status_realtime_pipeline_latency" and "cluster_id" columns
-    if {"pipelines_status_realtime_pipeline_latency", "cluster_id"}.issubset(df.columns):
-        # Group by cluster_id: during migration we might have metrics from 2 different instances:
+    # Filter the "pipelines_status_realtime_pipeline_latency" and "cluster" columns
+    if {"pipelines_status_realtime_pipeline_latency", "cluster"}.issubset(df.columns):
+        # Group by cluster: during migration we might have metrics from 2 different instances:
         # - The old one already unavailable
         # - The new one
         latency_df = df[[
-            "cluster_id",
+            "cluster",
             "pipelines_status_realtime_pipeline_latency"
         ]]
         # Convert latency column to numeric values
@@ -64,12 +64,12 @@ def upload(name: str, app_name: str, team_name: str, csv_path: str) -> None:
         )
         # Drop NaN rows
         latency_df = latency_df.dropna()
-        # Group latency values by 'cluster_id'
-        cluster_grouped = latency_df.groupby("cluster_id")
-        # Get the mean value for each "cluster_id"
+        # Group latency values by 'cluster'
+        cluster_grouped = latency_df.groupby("cluster")
+        # Get the mean value for each "cluster"
         average_latency = cluster_grouped.mean()
         logging.info(f"Average latency values: {average_latency}")
-        # TODO: Log each pair of 'cluster_id':'avg_qos' or just the highest one?
+        # TODO: Log each pair of 'cluster':'avg_qos' or just the highest one?
 
 
         # Initialize the ScanflowTrackerClient for MLflow to retrieve the Tracker URI
@@ -83,11 +83,11 @@ def upload(name: str, app_name: str, team_name: str, csv_path: str) -> None:
         # TODO: Start or attach to an existing run and log QoS metrics
         # with mlflow.start_run():
         #     pass
-        #     # Find the average QoS value for each cluster_id
+        #     # Find the average QoS value for each cluster
             
         #     # Log the maximum QoS value
         #     #mlflow.log_metric(key="avg_qos", value=avg_qos)
-        #     #mlflow.log_metric(key="cluster_id", value=cluster_id)
+        #     #mlflow.log_metric(key="cluster", value=cluster)
 
     else:
         sys.exit("Missing columns in CSV results")
