@@ -54,16 +54,20 @@ def store_query_results(app_name:str, team_name:str , query_results:str):
     # Create a ScanflowTrackerClient to manage any interaction with the Scanflow Tracker (?)
     client = ScanflowTrackerClient(verbose=True)
     # Why is this command needed?
-    mlflow.set_tracking_uri(client.get_tracker_uri(True))
+    #mlflow.set_tracking_uri(client.get_tracker_uri(True))
     # Create a MLFlow client
-    mlflowclient = MlflowClient(client.get_tracker_uri(True))
-    logging.info("Connecting tracking server uri: {}".format(mlflow.get_tracking_uri()))
+    #mlflowclient = MlflowClient(client.get_tracker_uri(True))
+    #logging.info("Connecting tracking server uri: {}".format(mlflow.get_tracking_uri()))
 
     # Set the MLflow experiment where to upload artifacts
-    mlflow.set_experiment("reactive-predictor")
+    #mlflow.set_experiment("reactive-predictor")
     # Use this method to upload the CSV as an MLFlow experiment artifact
-    #client.save_app_artifacts()
-
+    logging.info(f"Uploading query results dir {os.path.dirname(query_results)} as artifacts...")
+    client.save_app_artifacts(
+        app_name=app_name,
+        team_name=team_name,
+        app_dir=os.path.dirname(query_results)
+    )
     # If we wanted to download artifacts from the MLFlow experiment we'd use this method
     #client.download_artifacts()
 
