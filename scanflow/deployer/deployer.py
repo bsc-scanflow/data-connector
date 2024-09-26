@@ -299,7 +299,8 @@ class Deployer():
     # workflows: with different deployer
     def run_workflows(self,
                       namespace: str,
-                      workflows: List[Workflow]):
+                      workflows: List[Workflow],
+                      scanflow_env: ScanflowEnvironment = None):
         """
            run batch workflow
         """
@@ -307,7 +308,8 @@ class Deployer():
 
     def run_workflow(self,
                      namespace: str,
-                     workflows: Workflow):
+                     workflows: Workflow,
+                     scanflow_env: ScanflowEnvironment = None):
         raise NotImplementedError("Backend:run_workflow")
 
     def delete_workflows(self, 
