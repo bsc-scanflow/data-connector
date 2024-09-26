@@ -131,8 +131,9 @@ class ScanflowClient:
                          affinity: V1Affinity = None,
                          kedaSpec: KedaSpec = None,
                          hpcSpec: HpaSpec = None,
-                         output_dir: str = None):
-        return Workflow(name, nodes, edges, type, cron, resources, affinity, kedaSpec, hpcSpec, output_dir)
+                         output_dir: str = None,
+                         image_pull_secrets: List[str] = None):
+        return Workflow(name, nodes, edges, type, cron, resources, affinity, kedaSpec, hpcSpec, output_dir, image_pull_secrets)
     
     def ScanflowApplication(self,
                             app_name: str,

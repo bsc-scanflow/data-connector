@@ -3,7 +3,8 @@ import couler.argo as couler
 from couler.argo_submitter import ArgoSubmitter
 from couler.core.templates.volume import VolumeMount, Volume
 from couler.core.constants import ImagePullPolicy
-
+from couler.core import states
+from couler.core.templates.image_pull_secret import ImagePullSecret
 
 import logging
 logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
@@ -56,7 +57,11 @@ class ArgoWorkflows:
     def argoDag(self, dependency_graph):
         couler.dag(dependency_graph)
 
-    def configWorkflow(self, workflow_name, affinity, cron_config):
+    def configWorkflow(self, workflow_name, affinity, cron_config, image_pull_secrets:list[str] = None):
+        # TODO: Assign image_pull_policy to workflow, allegedly available within states.workflow
+        if image_pull_secrets:
+            for secret_name in image_pull_secrets:
+                states.workflow.add_image_pull_secret(ImagePullSecret(secret_name))
         if affinity:
             couler.config_workflow(
                 name=workflow_name,
