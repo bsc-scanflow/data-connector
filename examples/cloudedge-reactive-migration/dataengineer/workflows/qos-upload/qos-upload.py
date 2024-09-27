@@ -2,12 +2,12 @@ import mlflow
 import click
 import logging
 import pandas as pd
-import random
-import statistics
 import os
+import shutil
 import fnmatch
 import sys
 import json
+
 sys.path.insert(0, '/scanflow/scanflow')
 from scanflow.client import ScanflowTrackerClient
 
@@ -31,7 +31,81 @@ def get_latest_file(files_path:str, file_ext:str = "*") -> str:
                 mtime = os.path.getmtime(cur_filename)
                 latest_file = cur_filename
     
+    logging.info(f"Latest CSV file found: {latest_file}")
     return latest_file
+
+def get_latest_experiment_run_id(experiment_name: str = None, run_name: str = None) -> str:
+    """
+    Return the latest experiment run id
+    return: run_id hash
+    """
+    # Get the experiment id
+    reactive_experiment = mlflow.get_experiment_by_name(experiment_name)
+    experiment_id = reactive_experiment.experiment_id
+
+    # Retrieve filtered experiment runs by run_name, ordered by descending end time --> First entry will be the most recent
+    runs_df = mlflow.search_runs(
+        experiment_ids=[experiment_id],
+        filter_string=f"run_name='{run_name}'",
+        order_by=["end_time DESC"]
+    )
+    # First row is the most recently finalized one
+    run_id = runs_df.loc[[0]]['run_id'][0]
+    return run_id
+
+def retrieve_avg_qos_per_cluster(results_filename:str = None, csv_sep: str = ",") -> dict:
+    """
+    Calculate the average Latency QoS per each available cluster in the results filename
+    """
+    # Load the CSV file into a DataFrame
+    df = pd.read_csv(results_filename, sep=csv_sep)
+    # Fill empty cluster values with "no_cluster"
+    # - This should only happen when launching queries against Prometheus API instead of Thanos aggregator API
+    df.cluster = df.cluster.fillna("no_cluster")
+    # Filter the "pipelines_status_realtime_pipeline_latency" and "cluster" columns
+    if {"pipelines_status_realtime_pipeline_latency", "cluster"}.issubset(df.columns):
+
+        latency_df = df[[
+            "cluster",
+            "pipelines_status_realtime_pipeline_latency"
+        ]].copy()
+
+        # Convert latency column to numeric values
+        latency_df["pipelines_status_realtime_pipeline_latency"] = pd.to_numeric(
+            latency_df["pipelines_status_realtime_pipeline_latency"],
+            errors='coerce'
+        )
+        
+    else:
+        logging.info("Missing columns in CSV results. Uploading QoS = 0 for all cluster's id")
+        latency_df = df[[
+            "cluster"
+        ]].copy()
+        # Set all latency values to 0.0
+        latency_df["pipelines_status_realtime_pipeline_latency"] = 0.0
+
+    # Drop NaN rows
+    latency_df = latency_df.dropna()
+    # Group by cluster: during migration we might have metrics from 2 different instances:
+    # - The old one already unavailable
+    # - The new one
+    cluster_grouped = latency_df.groupby("cluster")
+    # Get the mean value for each "cluster"
+    average_latency = cluster_grouped.mean()
+    logging.info(f"Average latency values: {json.dumps(average_latency.to_dict(), indent=2)}")
+    # qos_dict contains key-value entries, where "key" is the name of the cluster and "value" is the mean QoS latency
+    qos_dict = average_latency.to_dict()["pipelines_status_realtime_pipeline_latency"]
+
+    return qos_dict
+
+
+def purge_local_experiment_results(filename: str = None) -> None:
+    """
+    Locally remove the experiment's results folder
+    - This file is already uploaded as an artifact in the MLflow experiment run
+    """
+    if os.path.exists(filename):
+        shutil.rmtree(os.path.dirname(filename))
 
 @click.command(help="Postprocessing: upload qos")
 @click.option("--name", default=None, type=str)
@@ -39,7 +113,8 @@ def get_latest_file(files_path:str, file_ext:str = "*") -> str:
 @click.option("--team_name", default=None, type=str)
 @click.option("--csv_path", default="/workflow/migration_experiment", type=str)
 @click.option("--csv_sep", default=";", type=str)
-def upload(name: str, app_name: str, team_name: str, csv_path: str, csv_sep: str) -> None:
+@click.option("--purge_local_results", default=False, type=bool)
+def upload(name: str, app_name: str, team_name: str, csv_path: str, csv_sep: str, purge_local_results:bool) -> None:
     """
     Upload the average QoS from the available latency values in the latest experiment results.
     ScanflowTrackerClient expects several environment variables to be already set:
@@ -55,69 +130,51 @@ def upload(name: str, app_name: str, team_name: str, csv_path: str, csv_sep: str
 
     # Retrieve latest experiment CSV file
     csv_filename = get_latest_file(csv_path, "csv")
-    logging.info(f"Latest CSV file found: {csv_filename}")
 
-    # Load the CSV file into a DataFrame
-    df = pd.read_csv(csv_filename, sep=csv_sep)
-    # Fill empty cluster values with "no_cluster"
-    # - This should only happen when launching queries against Prometheus API instead of Thanos aggregator API
-    df.cluster = df.cluster.fillna("no_cluster")
-    # Filter the "pipelines_status_realtime_pipeline_latency" and "cluster" columns
-    if {"pipelines_status_realtime_pipeline_latency", "cluster"}.issubset(df.columns):
-        # Group by cluster: during migration we might have metrics from 2 different instances:
-        # - The old one already unavailable
-        # - The new one
-        latency_df = df[[
-            "cluster",
-            "pipelines_status_realtime_pipeline_latency"
-        ]].copy()
+    # Calculate the average QoS per each available cluster in the CSV file
+    qos_dict = retrieve_avg_qos_per_cluster(
+        results_filename=csv_filename,
+        csv_sep=csv_sep
+    )
 
-        # Convert latency column to numeric values
-        latency_df["pipelines_status_realtime_pipeline_latency"] = pd.to_numeric(
-            latency_df["pipelines_status_realtime_pipeline_latency"],
-            errors='coerce'
+    # Initialize the ScanflowTrackerClient for MLflow to retrieve the Tracker URI
+    client = ScanflowTrackerClient()
+    mlflow.set_tracking_uri(client.get_tracker_uri(True))
+    
+    # Set the experiment name
+    mlflow.set_experiment(f"{app_name}")
+    
+    # Retrieve the latest experiment run id where to attach the QoS metrics and cluster parameters
+    run_id = get_latest_experiment_run_id(
+        experiment_name=app_name,
+        run_name=team_name
+    )
+
+    # Attach ALL QoS with indexed cluster_id to the latest experiment run. The max one might be from the previous app's cluster after a migration
+    with mlflow.start_run(run_id=run_id):
+        max_qos = 0
+        max_cluster = ""
+        max_idx = 0
+        for idx, (cluster, avg_qos) in enumerate(qos_dict.items()):
+            if avg_qos >= max_qos:
+                max_qos = avg_qos
+                max_cluster = cluster
+                max_idx = idx
+            mlflow.log_metric(key=f"qos_{idx}", value=avg_qos)
+            mlflow.log_param(key=f"cluster_{idx}", value=cluster)
+            
+        # Log the maximum QoS value
+        mlflow.log_metric(key="max_qos", value=max_qos)
+        mlflow.log_param(key="max_cluster", value=max_cluster)
+        mlflow.log_metric(key="max_idx", value=max_idx)
+
+    # Purge local CSV files if requested
+    # - This is useful to avoid large lists of files when looking for the latest one
+    if purge_local_results:
+        purge_local_experiment_results(
+            filename=csv_filename
         )
-        # Drop NaN rows
-        latency_df = latency_df.dropna()
-        # Group latency values by 'cluster'
-        cluster_grouped = latency_df.groupby("cluster")
-        # Get the mean value for each "cluster"
-        average_latency = cluster_grouped.mean()
-        logging.info(f"Average latency values: {json.dumps(average_latency.to_dict(), indent=2)}")
-        # qos_dict contains key-value entries, where "key" is the name of the cluster and "value" is the mean QoS latency
-        qos_dict = average_latency.to_dict()["pipelines_status_realtime_pipeline_latency"]
 
-        # Initialize the ScanflowTrackerClient for MLflow to retrieve the Tracker URI
-        client = ScanflowTrackerClient()
-        mlflow.set_tracking_uri(client.get_tracker_uri(True))
-        logging.info("Connecting tracking server uri: {}".format(mlflow.get_tracking_uri()))
 
-        # Set the experiment name
-        # TODO: Verify that the experiment name is the expected one
-        mlflow.set_experiment(f"{app_name}")
-
-        # TODO: Start or attach to an existing run and log QoS metrics
-        # TODO: Attach ALL QoS with indexed cluster_id. The max one might be from the previous app's cluster after a migration
-        with mlflow.start_run():
-            max_qos = 0
-            max_cluster = ""
-            max_idx = 0
-            for idx, (cluster, avg_qos) in enumerate(qos_dict.items()):
-                if avg_qos >= max_qos:
-                    max_qos = avg_qos
-                    max_cluster = cluster
-                    max_idx = idx
-                mlflow.log_metric(key=f"qos_{idx}", value=avg_qos)
-                mlflow.log_param(key=f"cluster_{idx}", value=cluster)
-                
-            # Log the maximum QoS value
-            mlflow.log_metric(key="max_qos", value=max_qos)
-            mlflow.log_param(key="max_cluster", value=max_cluster)
-            mlflow.log_metric(key="max_idx", value=max_idx)
-        
-    else:
-        sys.exit("Missing columns in CSV results")
-
-        
 if __name__ == '__main__':
     upload()
