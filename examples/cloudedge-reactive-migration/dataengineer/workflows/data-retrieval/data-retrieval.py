@@ -7,6 +7,7 @@ import os
 
 from promcsv import PromCSV
 import json
+from datetime import datetime
 
 import sys
 sys.path.insert(0, '/scanflow/scanflow')
@@ -19,6 +20,10 @@ def retrieve_prometheus_data(promcsv_config:click.File):
     logging.info("Retrieving Prometheus data...")
     with promcsv_config as f:
         query_config = json.load(f)
+
+    # Modify the PromCSV output directory so each execution creates a different subdir
+    # - This is done to prevent uploading historical results as artifacts in each experiment iteration
+    query_config["output_dir"] = f"{query_config['output_dir']}_{round(datetime.now().timestamp())}"
 
     prom_query = PromCSV(**query_config)
 
@@ -48,20 +53,10 @@ def store_query_results(app_name:str, team_name:str , query_results:str):
     - SCANFLOW_SERVER_URI: Same as SCANFLOW_TRACKER_URI
     - SCANFLOW_TRACKER_LOCAL_URI: Same as SCANFLOW_TRACKER_URI
     """
-    logging.info("Storing query results...")
-    # DEBUG:
-    logging.info(f"App name: {app_name}, Team name: {team_name}")
     # Create a ScanflowTrackerClient to manage any interaction with the Scanflow Tracker (?)
     client = ScanflowTrackerClient(verbose=True)
-    # Why is this command needed?
-    #mlflow.set_tracking_uri(client.get_tracker_uri(True))
-    # Create a MLFlow client
-    #mlflowclient = MlflowClient(client.get_tracker_uri(True))
-    #logging.info("Connecting tracking server uri: {}".format(mlflow.get_tracking_uri()))
 
-    # Set the MLflow experiment where to upload artifacts
-    #mlflow.set_experiment("reactive-predictor")
-    # Use this method to upload the CSV as an MLFlow experiment artifact
+    # Upload the experiment's results as artifacts
     logging.info(f"Uploading query results dir {os.path.dirname(query_results)} as artifacts...")
     client.save_app_artifacts(
         app_name=app_name,

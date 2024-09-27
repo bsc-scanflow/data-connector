@@ -3,7 +3,7 @@
   "start": "2 minutes ago",
   "step": "30",
   "output_dir": "/workflows/migration_experiment",
-  "name": "migration_experiment",
+  "name": "migration_experiment/run_at",
   "queries": [
     {
       "name": "pipeline_metrics",

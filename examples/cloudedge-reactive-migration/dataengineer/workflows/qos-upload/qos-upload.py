@@ -4,26 +4,34 @@ import logging
 import pandas as pd
 import random
 import statistics
-from pathlib import Path
+import os
+import fnmatch
 import sys
 import json
 sys.path.insert(0, '/scanflow/scanflow')
 from scanflow.client import ScanflowTrackerClient
 
-def get_modification_time(item: Path) -> float:
-    """
-    Return the modification timestamp of a Path object
-    """
-    return item.stat().st_mtime
-
-def get_latest_file(files_path:str) -> Path:
+def get_latest_file(files_path:str, file_ext:str = "*") -> str:
     """
     Sort all available files from the files path and return the most recent one
+    - files_path: Experiment's root folder. Within it there's a subfolder for each experiment run
     """
-    path_object = Path(files_path)
-    items = path_object.iterdir()
-    sorted_items = sorted(items, key=get_modification_time, reverse=True)
-    return sorted_items[0]
+    
+    walk_results = os.walk(files_path)
+    mtime = 0
+    latest_file = ""
+
+    # We only need the root and filenames list here, not the dirnames
+    # TODO: Improve this operation as it will increase in time with the amount of experiment runs
+    # - Previous experiment results aren't being purged as of now
+    for root, dirnames, filenames in walk_results:
+        for filename in fnmatch.filter(filenames, f"*.{file_ext}"):
+            cur_filename = os.path.join(root, filename)
+            if os.path.getmtime(cur_filename) > mtime:
+                mtime = os.path.getmtime(cur_filename)
+                latest_file = cur_filename
+    
+    return latest_file
 
 @click.command(help="Postprocessing: upload qos")
 @click.option("--name", default=None, type=str)
@@ -46,10 +54,14 @@ def upload(name: str, app_name: str, team_name: str, csv_path: str, csv_sep: str
     logging.info("Workflow step: {}".format(name))
 
     # Retrieve latest experiment CSV file
-    csv_filename = get_latest_file(csv_path)
+    csv_filename = get_latest_file(csv_path, "csv")
+    logging.info(f"Latest CSV file found: {csv_filename}")
+
     # Load the CSV file into a DataFrame
     df = pd.read_csv(csv_filename, sep=csv_sep)
-
+    # Fill empty cluster values with "no_cluster"
+    # - This should only happen when launching queries against Prometheus API instead of Thanos aggregator API
+    df.cluster = df.cluster.fillna("no_cluster")
     # Filter the "pipelines_status_realtime_pipeline_latency" and "cluster" columns
     if {"pipelines_status_realtime_pipeline_latency", "cluster"}.issubset(df.columns):
         # Group by cluster: during migration we might have metrics from 2 different instances:
@@ -89,13 +101,19 @@ def upload(name: str, app_name: str, team_name: str, csv_path: str, csv_sep: str
         with mlflow.start_run():
             max_qos = 0
             max_cluster = ""
-            for cluster, avg_qos in qos_dict.items():
+            max_idx = 0
+            for idx, (cluster, avg_qos) in enumerate(qos_dict.items()):
                 if avg_qos >= max_qos:
                     max_qos = avg_qos
                     max_cluster = cluster
+                    max_idx = idx
+                mlflow.log_metric(key=f"qos_{idx}", value=avg_qos)
+                mlflow.log_param(key=f"cluster_{idx}", value=cluster)
+                
             # Log the maximum QoS value
             mlflow.log_metric(key="max_qos", value=max_qos)
-            mlflow.log_metric(key="cluster", value=max_cluster)
+            mlflow.log_param(key="max_cluster", value=max_cluster)
+            mlflow.log_metric(key="max_idx", value=max_idx)
         
     else:
         sys.exit("Missing columns in CSV results")
