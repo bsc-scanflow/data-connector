@@ -13,9 +13,9 @@ on:
 # Set environment variables
 env:
   WORKDIR: ${{ github.workspace }}
-  KUBECONFIG_PATH: ${{ github.workspace}}/.kube/config
+  KUBECONFIG_PATH: ${{ github.workspace }}/.kube/config
   REACTIVE_MIGRATION_DATAENGINEER_APP_DIR: "examples/cloudedge-reactive-migration/dataengineer"
-  TRACKER_STORAGE: ${{ vars.CELLNEX_TRACKER_STORAGE }}
+  SCANFLOW_TRACKER_STORAGE: ${{ vars.CELLNEX_SCANFLOW_TRACKER_STORAGE }}
   SCANFLOW_SERVER_URI: ${{ vars.CELLNEX_SCANFLOW_SERVER_URI }}
   SCANFLOW_TRACKER_URI: ${{ vars.CELLNEX_SCANFLOW_TRACKER_URI }}
   MLFLOW_S3_ENDPOINT_URL: ${{ vars.CELLNEX_MLFLOW_S3_ENDPOINT_URL }}
@@ -28,7 +28,7 @@ env:
   DOCKER_REGISTRY_PASSWORD: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
   SCANFLOW_APP_NAME: "cloudedge-migration-experiment-ci"
   SCANFLOW_TEAM_NAME: "dataengineer"
-  LOCAL_DEPLOY: "1"
+  LOCAL_DEPLOY: ${{ vars.CELLNEX_LOCAL_DEPLOY }}
 jobs:
   jupyter-run:
     name: "Run Jupyter Notebook"
