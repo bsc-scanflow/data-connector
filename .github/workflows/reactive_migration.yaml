@@ -13,6 +13,7 @@ on:
 # Set environment variables
 env:
   WORKDIR: ${{ github.workspace }}
+  KUBECONFIG_PATH: ${{ github.workspace}}/.kube/config
   REACTIVE_MIGRATION_DATAENGINEER_APP_DIR: "examples/cloudedge-reactive-migration/dataengineer"
   TRACKER_STORAGE: ${{ vars.CELLNEX_TRACKER_STORAGE }}
   SCANFLOW_SERVER_URI: ${{ vars.CELLNEX_SCANFLOW_SERVER_URI }}
@@ -24,6 +25,9 @@ env:
   DOCKER_TAG: ${{ github.ref_name }}
   DOCKER_REGISTRY_USERNAME: ${{ secrets.GITLAB_REGISTRY_USERNAME }}
   DOCKER_REGISTRY_PASSWORD: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
+  SCANFLOW_APP_NAME: "cloudedge-migration-experiment-ci"
+  SCANFLOW_TEAM_NAME: "dataengineer"
+  LOCAL_DEPLOY: "1"
 jobs:
   jupyter-run:
     name: "Run Jupyter Notebook"
@@ -55,6 +59,16 @@ jobs:
     # - name: Pull image test
     #   shell: bash
     #   run: "docker pull registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/cloudedge-dataengineer-batch-inference-graph-predictor-batch:latest"
+    - name: Retrieve Kubeconf for Edge server
+      shell: bash
+      env:
+        KUBECONF_BASE64: ${{ secrets.CELLNEX_KUBECONF_EDGE }}
+      run: |
+        mkdir -p $(dirname ${KUBECONFIG_PATH})
+        echo $KUBECONF_BASE64 | base64 --decode > ${KUBECONFIG_PATH}
+        readlink -f ${KUBECONFIG_PATH}
+        ls -lh ${KUBECONFIG_PATH}
+
     - name: Execute Reactive Migration Notebook
       shell: bash
       run: |
