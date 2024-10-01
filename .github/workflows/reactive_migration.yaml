@@ -12,23 +12,28 @@ on:
 
 # Set environment variables
 env:
+  # Static variables
+  REACTIVE_MIGRATION_DATAENGINEER_APP_DIR: "examples/cloudedge-reactive-migration/dataengineer"
+  SCANFLOW_APP_NAME: "cloudedge-migration-experiment-ci"
+  SCANFLOW_TEAM_NAME: "dataengineer"
+  # From GitHub variables
   WORKDIR: ${{ github.workspace }}
   KUBECONFIG_PATH: ${{ github.workspace }}/.kube/config
-  REACTIVE_MIGRATION_DATAENGINEER_APP_DIR: "examples/cloudedge-reactive-migration/dataengineer"
-  SCANFLOW_TRACKER_STORAGE: ${{ vars.CELLNEX_SCANFLOW_TRACKER_STORAGE }}
+  DOCKER_TAG: ${{ github.ref_name }}
+  # From Action variables
   SCANFLOW_SERVER_URI: ${{ vars.CELLNEX_SCANFLOW_SERVER_URI }}
   SCANFLOW_TRACKER_URI: ${{ vars.CELLNEX_SCANFLOW_TRACKER_URI }}
   MLFLOW_S3_ENDPOINT_URL: ${{ vars.CELLNEX_MLFLOW_S3_ENDPOINT_URL }}
   AWS_ENDPOINT_URL: ${{ vars.CELLNEX_MLFLOW_S3_ENDPOINT_URL }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   DOCKER_REGISTRY: ${{ vars.GITLAB_CLOUDSKIN_REGISTRY_URI }}
-  DOCKER_TAG: ${{ github.ref_name }}
+  LOCAL_DEPLOY: ${{ vars.CELLNEX_LOCAL_DEPLOY }}
+  # From Action secrets
+  SCANFLOW_TRACKER_STORAGE: ${{ secrets.CELLNEX_SCANFLOW_TRACKER_STORAGE }}
   DOCKER_REGISTRY_USERNAME: ${{ secrets.GITLAB_REGISTRY_USERNAME }}
   DOCKER_REGISTRY_PASSWORD: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
-  SCANFLOW_APP_NAME: "cloudedge-migration-experiment-ci"
-  SCANFLOW_TEAM_NAME: "dataengineer"
-  LOCAL_DEPLOY: ${{ vars.CELLNEX_LOCAL_DEPLOY }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
 jobs:
   jupyter-run:
     name: "Run Jupyter Notebook"
@@ -63,6 +68,7 @@ jobs:
     - name: Retrieve Kubeconf for Edge server
       shell: bash
       env:
+        # Action secrets
         KUBECONF_BASE64: ${{ secrets.CELLNEX_KUBECONF_EDGE }}
       run: |
         mkdir -p $(dirname ${KUBECONFIG_PATH})
