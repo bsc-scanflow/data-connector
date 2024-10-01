@@ -14,6 +14,7 @@ on:
 env:
   WORKDIR: ${{ github.workspace }}
   REACTIVE_MIGRATION_DATAENGINEER_APP_DIR: "examples/cloudedge-reactive-migration/dataengineer"
+  TRACKER_STORAGE: ${{ vars.CELLNEX_TRACKER_STORAGE }}
   SCANFLOW_SERVER_URI: ${{ vars.CELLNEX_SCANFLOW_SERVER_URI }}
   SCANFLOW_TRACKER_URI: ${{ vars.CELLNEX_SCANFLOW_TRACKER_URI }}
   MLFLOW_S3_ENDPOINT_URI: ${{ vars.CELLNEX_MLFLOW_S3_ENDPOINT_URI}}
@@ -26,7 +27,12 @@ env:
 jobs:
   jupyter-run:
     name: "Run Jupyter Notebook"
-    runs-on: ubuntu-latest
+    #runs-on: ubuntu-latest
+    runs-on:
+    - self-hosted
+    - Linux
+    - X64
+    - cellnex
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
