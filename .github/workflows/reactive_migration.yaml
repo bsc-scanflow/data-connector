@@ -65,7 +65,7 @@ jobs:
         KUBECONF_BASE64: ${{ secrets.CELLNEX_KUBECONF_EDGE }}
       run: |
         mkdir -p $(dirname ${KUBECONFIG_PATH})
-        echo $KUBECONF_BASE64 | base64 --decode > ${KUBECONFIG_PATH}
+        echo "$KUBECONF_BASE64" | base64 --decode > ${KUBECONFIG_PATH}
         readlink -f ${KUBECONFIG_PATH}
         ls -lh ${KUBECONFIG_PATH}
 
