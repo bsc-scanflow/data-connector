@@ -2,7 +2,7 @@
   "prometheus_server": "http://10.17.252.5:21963",
   "start": "5 minutes ago",
   "step": "30",
-  "output_dir": "/workflows/reactive_migration_experiment",
+  "output_dir": "/workflow/reactive_migration_experiment",
   "name": "migration_experiment",
   "queries": [
     {
