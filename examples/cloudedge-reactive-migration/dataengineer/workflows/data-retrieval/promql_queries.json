@@ -14,13 +14,13 @@
         "pipeline_state": "RUNNING"
       },
       "schema": {
-        "columns": ["__name__", "pipeline_id"],
+        "columns": ["__name__", "cluster", "pipeline_id"],
         "dtype": "float"
       }
     },
     {
       "name": "node_cpu_usage",
-      "full_query": "sum(rate(node_cpu_seconds_total{mode='user'}[1m]))",
+      "full_query": "sum by(cluster) (rate(node_cpu_seconds_total{mode='user'}[1m]))",
       "schema": {
         "columns": [],
         "dtype": "float"
@@ -36,7 +36,7 @@
     },
     {
       "name": "pipelines_server_cpu_usage",
-      "full_query": "rate(container_cpu_usage_seconds_total{container='dlstreamer-pipeline-server', service='observability-stack-kube-p-kubelet'}[1m])",
+      "full_query": "avg by(cluster) (rate(container_cpu_usage_seconds_total{container='dlstreamer-pipeline-server', service='monitoring-prometheus-kubelet'}[1m]))",
       "schema": {
         "columns": [],
         "dtype": "float"
@@ -45,7 +45,7 @@
     {
       "name": "pipelines_server_mem_usage",
       "rename": true,
-      "full_query": "container_memory_working_set_bytes{container='dlstreamer-pipeline-server', service='observability-stack-kube-p-kubelet'}",
+      "full_query": "avg by(cluster) (container_memory_working_set_bytes{container='dlstreamer-pipeline-server', service='monitoring-prometheus-kubelet'})",
       "schema": {
         "columns": [],
         "dtype": "float"
