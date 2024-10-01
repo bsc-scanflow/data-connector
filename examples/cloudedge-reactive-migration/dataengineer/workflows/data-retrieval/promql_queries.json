@@ -1,9 +1,9 @@
 {
   "prometheus_server": "http://10.17.252.5:21963",
-  "start": "2 minutes ago",
+  "start": "5 minutes ago",
   "step": "30",
-  "output_dir": "/workflows/migration_experiment",
-  "name": "migration_experiment/run_at",
+  "output_dir": "/workflows/reactive_migration_experiment",
+  "name": "migration_experiment",
   "queries": [
     {
       "name": "pipeline_metrics",
@@ -30,7 +30,7 @@
       "name": "node_mem_usage",
       "full_query": "node_memory_MemTotal_bytes - node_memory_MemFree_bytes - node_memory_Buffers_bytes - node_memory_Cached_bytes - node_memory_SReclaimable_bytes",
       "schema": {
-        "columns": [],
+        "columns": ["cluster"],
         "dtype": "float"
       }
     },

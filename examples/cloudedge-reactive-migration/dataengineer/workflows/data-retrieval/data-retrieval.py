@@ -23,7 +23,7 @@ def retrieve_prometheus_data(promcsv_config:click.File):
 
     # Modify the PromCSV output directory so each execution creates a different subdir
     # - This is done to prevent uploading historical results as artifacts in each experiment iteration
-    query_config["output_dir"] = f"{query_config['output_dir']}_{round(datetime.now().timestamp())}"
+    query_config["output_dir"] = f"{query_config['output_dir']}/run_at_{round(datetime.now().timestamp())}"
 
     prom_query = PromCSV(**query_config)
 
