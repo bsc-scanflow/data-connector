@@ -74,7 +74,7 @@ def store_query_results(app_name:str, team_name:str , query_results:str) -> None
 @click.option("--app_name", default=None, type=str)
 @click.option("--team_name", default=None, type=str)
 # PromCSV arguments
-@click.opton("--output_path", default="/workflow", type=str)
+@click.option("--output_path", default="/workflow", type=str)
 @click.option("--promcsv_config", default="/app/data-retrieval/promql_queries.json", type=click.File('rb'))
 def main(app_name, team_name, output_path, promcsv_config):
     
