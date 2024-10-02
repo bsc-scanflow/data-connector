@@ -107,11 +107,12 @@ def purge_local_experiment_results(filename: str = None) -> None:
     if os.path.exists(filename):
         shutil.rmtree(os.path.dirname(filename))
 
+
 @click.command(help="Postprocessing: upload qos")
 @click.option("--name", default=None, type=str)
 @click.option("--app_name", default=None, type=str)
 @click.option("--team_name", default=None, type=str)
-@click.option("--csv_path", default="/workflow/migration_experiment", type=str)
+@click.option("--csv_path", default="/workflow", type=str)
 @click.option("--csv_sep", default=";", type=str)
 @click.option("--purge_local_results", default=False, type=bool)
 def upload(name: str, app_name: str, team_name: str, csv_path: str, csv_sep: str, purge_local_results:bool) -> None:
@@ -153,10 +154,11 @@ def upload(name: str, app_name: str, team_name: str, csv_path: str, csv_sep: str
     # Attach ALL QoS with indexed cluster_id to the latest experiment run. The max one might be from the previous app's cluster after a migration
     with mlflow.start_run(run_id=run_id):
         max_qos = 0
-        max_cluster = ""
-        max_idx = 0
+        max_cluster = "None"
+        # Set initial index to negative value so it makes clear that no cluster is candidate
+        max_idx = -1
         for idx, (cluster, avg_qos) in enumerate(qos_dict.items()):
-            if avg_qos >= max_qos:
+            if avg_qos > max_qos:
                 max_qos = avg_qos
                 max_cluster = cluster
                 max_idx = idx
