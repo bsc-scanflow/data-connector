@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cloudedge-debug-pod
+spec:
+  containers:
+  - name: busybox
+    image: busybox:stable
+    command:
+      - sleep
+    args:
+      - infinity
+    volumeMounts:
+      - mountPath: /scanflow
+        name: scanflowpath
+  volumes:
+    - name: scanflowpath
+      persistentVolumeClaim:
+        claimName: scanflow-scanflow-cloudedge-migration-experiment-ci-dataengineer
