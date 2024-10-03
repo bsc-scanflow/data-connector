@@ -50,7 +50,12 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                 logging.info("QoS below SLA. No migration required.")
             
             # Mark the experiment as already analysed
-            with mlflow.start_run(run_id=runs[0].info.run_id):
+            # TODO: check if set_experiment is enough to avoid active run vs environment run issues
+            #mlflow.set_experiment("cloudedge-migration-experiment-ci")
+            with mlflow.start_run(
+                run_id=runs[0].info.run_id,
+                experiment_id=runs[0].info.experiment_id
+                ):
                 mlflow.log_param(
                     key="analysed",
                     value="True"
