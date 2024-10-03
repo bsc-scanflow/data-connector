@@ -9,10 +9,11 @@ logging.getLogger().setLevel(logging.INFO)
 class NearbyOneActuator:
     # (hardcoded) Available Site IDs
     # TODO: Retrieve Site IDs from NearbyOne API with names
-    site_ids: [] = [
-        ("ecd3913a-3364-4961-9f61-87e312ef1798", "cloud-vm-1"),
-        ("a2826ee9-3807-4ae3-88f7-465e2bf5f65c", "edge-server")
+    site_ids: list = [
+        ("de5dad18-46c7-4d40-a09d-d929828a2189", "k8s-cnx1"),
+        ("fe780ac2-4230-44ed-aea7-2fc47d4ae33c", "k8s-edge-cluster")
     ]
+
 
     def get_next_site_id(self, source_site_id: str):
         """
@@ -28,6 +29,7 @@ class NearbyOneActuator:
         # Return None if there's no site_id match!
         return None
 
+
     def retrieve_services(self, cluster_id: str):
         """
         Return available services in a given cluster ID
@@ -37,12 +39,13 @@ class NearbyOneActuator:
 
 
     @staticmethod
-    def find_service(services: [{}], service_name: str):
+    def find_service(services: list, service_name: str):
         """
         Return a service from the services array with the same service_name as the given one
         return: ServiceChainResponse object in JSON format
         """
         pass
+
 
     def delete_service(self, service_id: str):
         """
@@ -50,6 +53,7 @@ class NearbyOneActuator:
         return: HTTP response?
         """
         pass
+
 
     @staticmethod
     def compose_deploy_service_payload(site_id: str, service_name: str):
@@ -59,12 +63,14 @@ class NearbyOneActuator:
         """
         pass
 
-    def deploy_service(self, deploy_service_payload: {}):
+
+    def deploy_service(self, deploy_service_payload: dict):
         """
         Send a POST service creation request to the NearbyOne API
         return: HTTP response?
         """
         pass
+
 
     def close_session(self):
         """
@@ -72,7 +78,8 @@ class NearbyOneActuator:
         """
         self.session.close()
 
-    def migrate_service(self, service_name: str, source_cluster_id: str, dest_cluster_id: str):
+
+    def migrate_service(self, service_name: str, source_cluster_id: str):
         """
         Proceed to migrate a service running in source_cluster_id to dest_cluster_id.
         If dest_cluster_id is empty, take the next cluster_id after source_cluster_id from self.site_ids array
@@ -80,19 +87,50 @@ class NearbyOneActuator:
         """
         # Steps:
         # - Retrieve available services in source_cluster_id
+
         # - Find the service_id for the service with the given service_name
+
         # - Delete the service_id from the source_cluster_id
-        # - Set the dest_cluster_id
+
+        # - Find the dest_cluster_id
+        dest_cluster_id = self.get_next_site_id(source_site_id=source_cluster_id)
+
         # - Compose the required DeployServiceChainArgs payload with the same service_name and the new dest_cluster_id
+
         # - Deploy the service_name using the DeployServiceChainArgs
-        pass
+        logging.info("Migrating service. Coming soon!")
+        return {
+            "service_name": service_name,
+            "source_cluster_id": source_cluster_id,
+            "source_cluster_name": self.site_ids[source_cluster_id],
+            "dest_cluster_id": dest_cluster_id,
+            "dest_cluster_name": self.site_ids[dest_cluster_id],
+        }
+
 
     def __init__(self, api_url: str, username: str, password: str):
         """
         Initialize a NearbyOneActuator object
         """
+        # TODO: test authentication!
         self.api_url: str = api_url
         self.session: requests.Session = requests.Session()
         # We expect BasicAuth for NearbyOne API server
         self.session.auth = (username, password)
         self.session.headers.update({"Accept": "application/json"})
+
+
+def migrate_application(app_name: str, current_cluster_id: str, nearbyone_url: str, nearbyone_username: str, nearbyone_password: str):
+
+    # Initialize a NearbyOneActuator
+    nearby_actuator = NearbyOneActuator(
+        api_url=nearbyone_url,
+        username=nearbyone_username,
+        password=nearbyone_password
+    )
+    
+    # Migrate the service
+    return nearby_actuator.migrate_service(
+        service_name=app_name,
+        source_cluster_id=current_cluster_id
+    )
