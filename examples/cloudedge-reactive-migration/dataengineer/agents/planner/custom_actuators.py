@@ -99,13 +99,14 @@ class NearbyOneActuator:
 
         # - Deploy the service_name using the DeployServiceChainArgs
         logging.info("Migrating service. Coming soon!")
-        return {
+        return str({
             "service_name": service_name,
             "source_cluster_id": source_cluster_id,
             "source_cluster_name": self.site_ids[source_cluster_id],
             "dest_cluster_id": dest_cluster_id,
             "dest_cluster_name": self.site_ids[dest_cluster_id],
-        }
+            }
+        )
 
 
     def __init__(self, api_url: str, username: str, password: str):
