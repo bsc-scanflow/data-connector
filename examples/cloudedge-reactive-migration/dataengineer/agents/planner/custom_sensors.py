@@ -16,7 +16,7 @@ def tock():
 
 #example 1: count number of predictions in last 5 min
 # TODO: parameterize the node names (use app_name for this and team_name for the run names)
-@sensor(nodes=["cloudskin-migration-experiment-ci"])
+@sensor(nodes=["cloudedge-migration-experiment-ci"])
 async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
     print(args)
     print(kwargs)
