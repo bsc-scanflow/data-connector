@@ -1,3 +1,4 @@
+import mlflow.entities
 from .custom_rules import *
 from .custom_actuators import *
 from typing import List, Optional
@@ -53,11 +54,26 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             # TODO: check if set_experiment is enough to avoid active run vs environment run issues
             logging.info(f"Experiment id: {runs[0].info.experiment_id}")
             logging.info(f"Experiment run id: {runs[0].info.run_id}")
-            mlflow.set_experiment(runs[0].info.experiment_id)
-            
+            #mlflow.set_experiment(runs[0].info.experiment_id)
+
+            # Initialize an MLflow RunStatus object just for convenience
+            mlflow_run_status = mlflow.entities.RunStatus()
+            # Also add a timeout
+            timeout = 60
+            start_time = time.time()
+            elapsed_time = time.time() - start_time
+            while not mlflow_run_status.is_terminated(runs[0].info.status) and (elapsed_time < timeout):
+                logging.info(f"Run status is {mlflow_run_status.to_string(runs[0].info.status)}, waiting until FINISHED")
+                time.sleep(1)
+                elapsed_time = time.time() - start_time
+
+            if elapsed_time > timeout:
+                logging.info("Current run still hasn't finished. Can't log `analysed` parameter, exiting...")
+                return migration_result
+
             with mlflow.start_run(
                 run_id=runs[0].info.run_id,
-                #experiment_id=runs[0].info.experiment_id
+                experiment_id=runs[0].info.experiment_id
                 ):
                 mlflow.log_param(
                     key="analysed",
