@@ -77,7 +77,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             logging.info(f"Experiment run id: {latest_run.info.run_id}")
             
             # Set latest experiment as the active one
-            mlflow.set_experiment(latest_run.info.experiment_id)
+            mlflow.set_experiment(experiment_id=latest_run.info.experiment_id)
 
             logging.info(f"Run status: {latest_run.info.status}")
 
