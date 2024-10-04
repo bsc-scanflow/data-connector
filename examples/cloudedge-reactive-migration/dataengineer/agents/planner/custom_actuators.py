@@ -27,7 +27,7 @@ class NearbyOneActuator:
                 else:
                     return self.site_ids[i + 1]
         # Return None if there's no site_id match!
-        return None
+        return (None, None)
 
     def get_site_id_name(self, current_site_id: str) -> str:
         """
@@ -102,7 +102,7 @@ class NearbyOneActuator:
         # - Delete the service_id from the source_cluster_id
 
         # - Find the dest_cluster_id
-        dest_cluster_id, dest_cluster_name = self.get_next_site_id(source_site_id=source_cluster_id)
+        (dest_cluster_id, dest_cluster_name) = self.get_next_site_id(source_site_id=source_cluster_id)
 
         # - Compose the required DeployServiceChainArgs payload with the same service_name and the new dest_cluster_id
 
