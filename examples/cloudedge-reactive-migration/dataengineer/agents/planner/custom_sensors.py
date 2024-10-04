@@ -21,7 +21,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
     print(args)
     print(kwargs)
     
-    migration_result = ""
+    migration_result = 0
 
     # Only take into account the latest run and only if parameter "analysed" is set to false
     if runs:
@@ -51,10 +51,13 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             
             # Mark the experiment as already analysed
             # TODO: check if set_experiment is enough to avoid active run vs environment run issues
-            #mlflow.set_experiment("cloudedge-migration-experiment-ci")
+            logging.info(f"Experiment id: {runs[0].info.experiment_id}")
+            logging.info(f"Experiment run id: {runs[0].info.run_id}")
+            mlflow.set_experiment(runs[0].info.experiment_id)
+            
             with mlflow.start_run(
                 run_id=runs[0].info.run_id,
-                experiment_id=runs[0].info.experiment_id
+                #experiment_id=runs[0].info.experiment_id
                 ):
                 mlflow.log_param(
                     key="analysed",

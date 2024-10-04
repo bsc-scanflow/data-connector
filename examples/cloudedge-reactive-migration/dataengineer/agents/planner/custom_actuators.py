@@ -29,6 +29,15 @@ class NearbyOneActuator:
         # Return None if there's no site_id match!
         return None
 
+    def get_site_id_name(self, current_site_id: str) -> str:
+        """
+        Return the site_id name from the lookup table
+        """
+        for (site_id, site_name) in self.site_ids:
+            if current_site_id == site_id:
+                return site_name
+            
+        return "None"
 
     def retrieve_services(self, cluster_id: str):
         """
@@ -93,20 +102,29 @@ class NearbyOneActuator:
         # - Delete the service_id from the source_cluster_id
 
         # - Find the dest_cluster_id
-        dest_cluster_id = self.get_next_site_id(source_site_id=source_cluster_id)
+        dest_cluster_id, dest_cluster_name = self.get_next_site_id(source_site_id=source_cluster_id)
 
         # - Compose the required DeployServiceChainArgs payload with the same service_name and the new dest_cluster_id
 
         # - Deploy the service_name using the DeployServiceChainArgs
         logging.info("Migrating service. Coming soon!")
-        return str({
+        logging.info(str({
             "service_name": service_name,
             "source_cluster_id": source_cluster_id,
-            "source_cluster_name": self.site_ids[source_cluster_id],
+            "source_cluster_name": self.get_site_id_name(source_cluster_id),
             "dest_cluster_id": dest_cluster_id,
-            "dest_cluster_name": self.site_ids[dest_cluster_id],
+            "dest_cluster_name": dest_cluster_name,
             }
-        )
+        ))
+        # return str({
+        #     "service_name": service_name,
+        #     "source_cluster_id": source_cluster_id,
+        #     "source_cluster_name": self.get_site_id_name(source_cluster_id),
+        #     "dest_cluster_id": dest_cluster_id,
+        #     "dest_cluster_name": dest_cluster_name,
+        #     }
+        # )
+        return 1
 
 
     def __init__(self, api_url: str, username: str, password: str):
