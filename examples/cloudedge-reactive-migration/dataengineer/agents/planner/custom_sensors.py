@@ -22,7 +22,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
     print(args)
     print(kwargs)
     
-    migration_result = "0"
+    migration_result = "No migration"
 
     # Only take into account the latest run and only if parameter "analysed" is set to false
     if runs:
@@ -38,8 +38,9 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             elapsed_time = time.time() - start_time
             
             # Wait for experiment parameters and metrics to be available
+            logging.info(f"Waiting for run metrics and params to be available...")
             while "max_cluster" not in latest_run.data.params and elapsed_time < timeout:
-                logging.info(f"Run {latest_run.info.run_id} still hasn't logged the QoS values. Waiting...")
+                logging.debug(f"Run {latest_run.info.run_id} still hasn't logged the QoS values. Waiting...")
                 time.sleep(1)
                 elapsed_time = time.time() - start_time
                 # Retrieve again the latest run info from backend
@@ -47,7 +48,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
 
             if elapsed_time > timeout:
                 logging.info("Current run still hasn't finished. Can't retrieve QoS values, exiting...")
-                return migration_result
+                return "No QoS values available"
             
             # Retrieve the available experiment metrics and parameters
             max_cluster = latest_run.data.params["max_cluster"]
@@ -72,6 +73,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             else:
                 # Nothing to do
                 logging.info("QoS below SLA. No migration required.")
+                migration_result = "QoS below SLA. No migration required"
             
             # Mark the experiment as already analysed
             # TODO: check if set_experiment is enough to avoid active run vs environment run issues
@@ -87,8 +89,9 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             elapsed_time = time.time() - start_time
 
             run_status = mlflow_run_status.from_string(latest_run.info.status)
+            logging.info(f"Waiting for run {latest_run.info.run_id} to terminate...")
             while not mlflow_run_status.is_terminated(run_status) and (elapsed_time < timeout):
-                logging.info(f"Run status is {runs[0].info.status}, waiting until run is terminated...")
+                logging.debug(f"Run status is {latest_run.info.status}, waiting until run is terminated...")
                 time.sleep(1)
                 elapsed_time = time.time() - start_time
                 # Retrieve again the latest run info from backend
@@ -97,7 +100,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
 
             if elapsed_time > timeout:
                 logging.info("Current run still hasn't finished. Can't log `analysed` parameter, exiting...")
-                return migration_result
+                return "Latest run not finished"
 
             logging.info(f"Setting experiment run {latest_run.info.run_id} as analysed...")
             with mlflow.start_run(
@@ -111,7 +114,9 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
         else:
             # No new experiment runs available to analyse
             logging.info("Last run already analysed. Skipping...")
+            migration_result = "All runs already analysed"
     else:
         logging.info("No available runs in experiment. Skipping...")
+        migration_result = "Experiment doesn't have runs"
 
     return migration_result
