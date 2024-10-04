@@ -37,6 +37,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             start_time = time.time()
             elapsed_time = time.time() - start_time
             
+            # Wait for experiment parameters and metrics to be available
             while "max_cluster" not in latest_run.data.params and elapsed_time < timeout:
                 logging.info(f"Run {latest_run.info.run_id} still hasn't logged the QoS values. Waiting...")
                 time.sleep(1)
@@ -58,7 +59,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             if max_cluster != "None" and qos_constraints(max_qos):
 
                 # Proceed to migrate the application
-                logging.info(f"Maximum QoS {max_qos} found in Cluster ID {max_cluster}. Waiting for migration decision...")
+                logging.info(f"Maximum QoS value {max_qos} found in Cluster ID {max_cluster} is above SLA. Executing application migration...")
                 # TODO: provide NearbyOne API url through kwargs
                 migration_result = migrate_application(
                     app_name=kwargs["app_name"],
@@ -69,6 +70,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                 )
                 
             else:
+                # Nothing to do
                 logging.info("QoS below SLA. No migration required.")
             
             # Mark the experiment as already analysed
@@ -97,6 +99,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                 logging.info("Current run still hasn't finished. Can't log `analysed` parameter, exiting...")
                 return migration_result
 
+            logging.info(f"Setting experiment run {latest_run.info.run_id} as analysed...")
             with mlflow.start_run(
                 run_id=latest_run.info.run_id,
                 experiment_id=latest_run.info.experiment_id
@@ -106,6 +109,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                     value="True"
                 )
         else:
+            # No new experiment runs available to analyse
             logging.info("Last run already analysed. Skipping...")
     else:
         logging.info("No available runs in experiment. Skipping...")
