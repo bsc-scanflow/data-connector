@@ -10,8 +10,8 @@ class NearbyOneActuator:
     # (hardcoded) Available Site IDs
     # TODO: Retrieve Site IDs from NearbyOne API with names
     site_ids: list = [
-        ("de5dad18-46c7-4d40-a09d-d929828a2189", "k8s-cnx1"),
-        ("fe780ac2-4230-44ed-aea7-2fc47d4ae33c", "k8s-edge-cluster")
+        ("f0f802ff-1888-46d5-931b-16897c3f1de7", "k8s-cnx1"),
+        ("eb0e3eaa-b668-4ad6-bc10-2bb0eb7da259", "k8s-edge-cluster")
     ]
 
 
