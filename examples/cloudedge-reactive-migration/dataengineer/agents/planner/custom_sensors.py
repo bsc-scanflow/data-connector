@@ -76,6 +76,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
 
             start_time = time.time()
             elapsed_time = time.time() - start_time
+            logging.info(f"Run status type: {type(runs[0].info.status)}")
             while not mlflow_run_status.is_terminated(runs[0].info.status) and (elapsed_time < timeout):
                 logging.info(f"Run status is {runs[0].info.status}, waiting until FINISHED")
                 time.sleep(1)
