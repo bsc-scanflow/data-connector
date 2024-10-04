@@ -22,7 +22,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
     print(args)
     print(kwargs)
     
-    migration_result = 0
+    migration_result = "0"
 
     # Only take into account the latest run and only if parameter "analysed" is set to false
     if runs:

@@ -1,5 +1,6 @@
 import logging
 import requests
+import json
 
 logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
@@ -88,7 +89,7 @@ class NearbyOneActuator:
         self.session.close()
 
 
-    def migrate_service(self, service_name: str, source_cluster_id: str):
+    def migrate_service(self, service_name: str, source_cluster_id: str) -> str:
         """
         Proceed to migrate a service running in source_cluster_id to dest_cluster_id.
         If dest_cluster_id is empty, take the next cluster_id after source_cluster_id from self.site_ids array
@@ -108,23 +109,21 @@ class NearbyOneActuator:
 
         # - Deploy the service_name using the DeployServiceChainArgs
         logging.info("Migrating service. Coming soon!")
-        logging.info(str({
+        migration_result = {
             "service_name": service_name,
             "source_cluster_id": source_cluster_id,
             "source_cluster_name": self.get_site_id_name(source_cluster_id),
             "dest_cluster_id": dest_cluster_id,
             "dest_cluster_name": dest_cluster_name,
-            }
-        ))
-        # return str({
-        #     "service_name": service_name,
-        #     "source_cluster_id": source_cluster_id,
-        #     "source_cluster_name": self.get_site_id_name(source_cluster_id),
-        #     "dest_cluster_id": dest_cluster_id,
-        #     "dest_cluster_name": dest_cluster_name,
-        #     }
-        # )
-        return 1
+        }
+
+        logging.info(str(migration_result))
+        # Debug - Try to return something else than an integer
+        return json.dumps(
+            obj=migration_result,
+            indent=2
+        )
+        #return 1
 
 
     def __init__(self, api_url: str, username: str, password: str):
@@ -139,7 +138,7 @@ class NearbyOneActuator:
         self.session.headers.update({"Accept": "application/json"})
 
 
-def migrate_application(app_name: str, current_cluster_id: str, nearbyone_url: str, nearbyone_username: str, nearbyone_password: str):
+def migrate_application(app_name: str, current_cluster_id: str, nearbyone_url: str, nearbyone_username: str, nearbyone_password: str) -> str:
 
     # Initialize a NearbyOneActuator
     nearby_actuator = NearbyOneActuator(
