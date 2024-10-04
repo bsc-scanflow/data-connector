@@ -26,7 +26,8 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
 
     # Only take into account the latest run and only if parameter "analysed" is set to false
     if runs:
-        if not "analysed" in runs[0].data.params:
+        latest_run = runs[0]
+        if not "analysed" in latest_run.data.params:
             
             # Initialize an MLflow RunStatus object just for convenience
             mlflow_run_status = mlflow.entities.RunStatus()
@@ -36,20 +37,22 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             start_time = time.time()
             elapsed_time = time.time() - start_time
             
-            while "max_cluster" not in runs[0].data.params and elapsed_time < timeout:
-                logging.info(f"Run {runs[0].info.run_id} still hasn't logged the QoS values. Waiting...")
+            while "max_cluster" not in latest_run.data.params and elapsed_time < timeout:
+                logging.info(f"Run {latest_run.info.run_id} still hasn't logged the QoS values. Waiting...")
                 time.sleep(1)
                 elapsed_time = time.time() - start_time
+                # Retrieve again the latest run info from backend
+                latest_run = mlflow.get_run(run_id=latest_run.info.run_id)
 
             if elapsed_time > timeout:
                 logging.info("Current run still hasn't finished. Can't retrieve QoS values, exiting...")
                 return migration_result
             
             # Retrieve the available experiment metrics and parameters
-            max_cluster = runs[0].data.params["max_cluster"]
-            max_qos = runs[0].data.metrics["max_qos"]
+            max_cluster = latest_run.data.params["max_cluster"]
+            max_qos = latest_run.data.metrics["max_qos"]
             # Index not required as of now
-            max_idx = runs[0].data.metrics["max_idx"]
+            max_idx = latest_run.data.metrics["max_idx"]
 
             # Check if there's a max_cluster ID value or it is set to None
             if max_cluster != "None" and qos_constraints(max_qos):
@@ -70,25 +73,31 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             
             # Mark the experiment as already analysed
             # TODO: check if set_experiment is enough to avoid active run vs environment run issues
-            logging.info(f"Experiment id: {runs[0].info.experiment_id}")
-            logging.info(f"Experiment run id: {runs[0].info.run_id}")
+            logging.info(f"Experiment id: {latest_run.info.experiment_id}")
+            logging.info(f"Experiment run id: {latest_run.info.run_id}")
             #mlflow.set_experiment(runs[0].info.experiment_id)
+
+            logging.info(f"Run status: {latest_run.info.status}")
 
             start_time = time.time()
             elapsed_time = time.time() - start_time
-            logging.info(f"Run status type: {type(runs[0].info.status)}")
-            while not mlflow_run_status.is_terminated(runs[0].info.status) and (elapsed_time < timeout):
-                logging.info(f"Run status is {runs[0].info.status}, waiting until FINISHED")
+
+            run_status = mlflow_run_status.from_string(latest_run.info.status)
+            while not mlflow_run_status.is_terminated(run_status) and (elapsed_time < timeout):
+                logging.info(f"Run status is {runs[0].info.status}, waiting until run is terminated...")
                 time.sleep(1)
                 elapsed_time = time.time() - start_time
+                # Retrieve again the latest run info from backend
+                latest_run = mlflow.get_run(run_id=latest_run.info.run_id)
+                run_status = mlflow_run_status.from_string(latest_run.info.status)
 
             if elapsed_time > timeout:
                 logging.info("Current run still hasn't finished. Can't log `analysed` parameter, exiting...")
                 return migration_result
 
             with mlflow.start_run(
-                run_id=runs[0].info.run_id,
-                experiment_id=runs[0].info.experiment_id
+                run_id=latest_run.info.run_id,
+                experiment_id=latest_run.info.experiment_id
                 ):
                 mlflow.log_param(
                     key="analysed",
