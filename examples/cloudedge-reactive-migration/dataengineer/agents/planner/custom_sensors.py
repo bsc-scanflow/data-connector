@@ -27,16 +27,34 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
     # Only take into account the latest run and only if parameter "analysed" is set to false
     if runs:
         if not "analysed" in runs[0].data.params:
+            
+            # Initialize an MLflow RunStatus object just for convenience
+            mlflow_run_status = mlflow.entities.RunStatus()
+            # Add an availability/termination run timeout
+            timeout = kwargs["timeout"] if "timeout" in kwargs else 60
+            
+            start_time = time.time()
+            elapsed_time = time.time() - start_time
+            
+            while "max_cluster" not in runs[0].data.params and elapsed_time < timeout:
+                logging.info(f"Run {runs[0].info.run_id} still hasn't logged the QoS values. Waiting...")
+                time.sleep(1)
+                elapsed_time = time.time() - start_time
+
+            if elapsed_time > timeout:
+                logging.info("Current run still hasn't finished. Can't retrieve QoS values, exiting...")
+                return migration_result
+            
             # Retrieve the available experiment metrics and parameters
             max_cluster = runs[0].data.params["max_cluster"]
-            # Check if there's a max_cluster ID value or it is set to None
             max_qos = runs[0].data.metrics["max_qos"]
             # Index not required as of now
             max_idx = runs[0].data.metrics["max_idx"]
 
+            # Check if there's a max_cluster ID value or it is set to None
             if max_cluster != "None" and qos_constraints(max_qos):
 
-                # Proceed to create a NearbyOneActuator object for the migration
+                # Proceed to migrate the application
                 logging.info(f"Maximum QoS {max_qos} found in Cluster ID {max_cluster}. Waiting for migration decision...")
                 # TODO: provide NearbyOne API url through kwargs
                 migration_result = migrate_application(
@@ -56,14 +74,10 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             logging.info(f"Experiment run id: {runs[0].info.run_id}")
             #mlflow.set_experiment(runs[0].info.experiment_id)
 
-            # Initialize an MLflow RunStatus object just for convenience
-            mlflow_run_status = mlflow.entities.RunStatus()
-            # Also add a timeout
-            timeout = 60
             start_time = time.time()
             elapsed_time = time.time() - start_time
             while not mlflow_run_status.is_terminated(runs[0].info.status) and (elapsed_time < timeout):
-                logging.info(f"Run status is {mlflow_run_status.to_string(runs[0].info.status)}, waiting until FINISHED")
+                logging.info(f"Run status is {runs[0].info.status}, waiting until FINISHED")
                 time.sleep(1)
                 elapsed_time = time.time() - start_time
 
