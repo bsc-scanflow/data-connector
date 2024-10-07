@@ -76,7 +76,7 @@ class sensor:
         agent_name = get_env("AGENT_NAME")
         mlflow.set_experiment(f"{agent_name}-agent")
         with mlflow.start_run(run_name=f"{sensorMessage.type} - {sensorMessage.function}"):
-            mlflow.log_dict(sensorMessage.dict(), "log.json")
-            
+            #mlflow.log_dict(sensorMessage.dict(), "log.json")
+            mlflow.log_dict(sensorMessage.model_dump(), "log.json")
     
     
