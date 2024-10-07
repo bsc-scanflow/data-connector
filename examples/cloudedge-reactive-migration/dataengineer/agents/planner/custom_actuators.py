@@ -119,11 +119,11 @@ class NearbyOneActuator:
 
         logging.debug(str(migration_result))
         # Debug - Try to return something else than an integer
-        # return json.dumps(
-        #     obj=migration_result,
-        #     indent=2
-        # )
-        return migration_result
+        return json.dumps(
+            obj=migration_result,
+            indent=2
+        )
+        #return migration_result
         #return 1
 
 
