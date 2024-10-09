@@ -31,7 +31,8 @@ class Executor(Node):
                  image: str = None,
                  timeout: int = None,
                  resources: V1ResourceRequirements = None,
-                 affinity: V1Affinity = None):
+                 affinity: V1Affinity = None,
+                 image_pull_policy: str = "Always"):
 
         super(Executor, self).__init__(name=name, node_type='executor')
         self.mainfile = mainfile
@@ -44,6 +45,7 @@ class Executor(Node):
         self.timeout = timeout
         self.resources = resources
         self.affinity = affinity
+        self.image_pull_policy = image_pull_policy
 
     def to_dict(self):
         tmp_dict = {}

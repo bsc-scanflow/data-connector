@@ -42,11 +42,11 @@ class ArgoWorkflows:
             volumeMounts.append(volumeMount)
         return volumeMounts
 
-    def argoExecutor(self, name, image, image_pull_policy, command, args, env, volumeMounts, resources):
+    def argoExecutor(self, name, image, image_pull_policy: str, command, args, env, volumeMounts, resources):
         logging.info(f" argo executor: {image_pull_policy}")
         return lambda: couler.run_container(
             image = image,
-            image_pull_policy = ImagePullPolicy.Always,
+            image_pull_policy = ImagePullPolicy(image_pull_policy),
             step_name = name,
             command = command,
             args = args,

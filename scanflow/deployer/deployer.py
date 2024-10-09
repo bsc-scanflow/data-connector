@@ -259,7 +259,8 @@ class Deployer():
             volumes = volumes,
             env_from = env_from_list,
             env=env,
-            volumeMounts = volumeMounts
+            volumeMounts = volumeMounts,
+            image_pull_policy=agent.image_pull_policy
         )
 
         step1 = self.kubeclient.create_deployment(namespace, deployment)

@@ -125,7 +125,7 @@ class ArgoDeployer(deployer.Deployer):
                     logging.info(f"{executor.resources.to_dict().get('limits')}")
                     argoContainers[f"{executor.name}"] = self.argoclient.argoExecutor(name = executor.name, 
                              image = executor.image,
-                             image_pull_policy = None,
+                             image_pull_policy = executor.image_pull_policy,
                              command = format_command({'python': f'/app/{executor.name}/{executor.mainfile}'})+format_parameters(executor.parameters),
                              args = [],
                             #  args = format_parameters(executor.parameters),
@@ -137,7 +137,7 @@ class ArgoDeployer(deployer.Deployer):
                     logging.info(f" command: {format_command({'python': f'/app/{executor.name}/{executor.mainfile}'})}")
                     argoContainers[f"{executor.name}"] = self.argoclient.argoExecutor(name = executor.name, 
                              image = executor.image,
-                             image_pull_policy = None,
+                             image_pull_policy = executor.image_pull_policy,
                              command = format_command({'python': f'/app/{executor.name}/{executor.mainfile}'})+format_parameters(executor.parameters),
                             #  args = format_parameters(executor.parameters),
                              args = [],

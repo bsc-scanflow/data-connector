@@ -372,7 +372,7 @@ class Kubernetes:
 
 
 
-    def build_deployment(self, namespace=None, name=None, label=None, image=None, volumes=None, env=None, env_from=None, volumeMounts=None, image_pull_secret:client.V1Secret=None): 
+    def build_deployment(self, namespace=None, name=None, label=None, image=None, volumes=None, env=None, env_from=None, volumeMounts=None, image_pull_secret:client.V1Secret=None, image_pull_policy:str = "Always"):
         spec = client.V1DeploymentSpec(
             selector=client.V1LabelSelector(match_labels={label:name}),
             template=client.V1PodTemplateSpec(),
@@ -381,7 +381,7 @@ class Kubernetes:
         container = client.V1Container(
             name=name,
             image=image,
-            image_pull_policy="Always",
+            image_pull_policy=image_pull_policy,
             env=env,
             env_from=env_from,
             volume_mounts=volumeMounts

@@ -89,9 +89,10 @@ class ScanflowClient:
                          image: str = None,
                          timeout: int = None,
                          resources: V1ResourceRequirements = None,
-                         affinity: V1Affinity = None):
+                         affinity: V1Affinity = None,
+                         image_pull_policy: str = "Always"):
         return Executor(name, mainfile, parameters, requirements, 
-        dockerfile, base_image, env, image, timeout, resources, affinity)
+        dockerfile, base_image, env, image, timeout, resources, affinity, image_pull_policy)
 
     def ScanflowService(self,
                         name: str,
