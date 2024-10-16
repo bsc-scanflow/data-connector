@@ -232,7 +232,7 @@ class DockerBuilder(builder.Builder):
                         ENTRYPOINT ["python", "/app/{executor.name}/{executor.mainfile}"]
                     ''')
             elif executor.mainfile.endswith('.sh'):
-	            exec_template = dedent(f''' 
+                exec_template = dedent(f''' 
                     ENTRYPOINT ["/bin/bash", "-c", "/app/{executor.name}/{executor.mainfile}"]
                 ''')
             template += exec_template
