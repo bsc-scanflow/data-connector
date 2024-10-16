@@ -61,7 +61,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
 
                 # Proceed to migrate the application
                 logging.info(f"Maximum QoS value {max_qos} found in Cluster ID {max_cluster} is above SLA. Executing application migration...")
-                # TODO: provide NearbyOne API url through kwargs
+
                 migration_result = migrate_application(
                     app_name=kwargs["app_name"],
                     current_cluster_id=max_cluster,
@@ -69,7 +69,11 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                     nearbyone_username=kwargs["nearbyone_username"],
                     nearbyone_password=kwargs["nearbyone_password"]
                 )
-                
+                # Workaround: Sensor return value is expected to be str
+                migration_result = json.dumps(
+                    obj=migration_result,
+                    indent=2
+                )
             else:
                 # Nothing to do
                 logging.info("QoS below SLA. No migration required.")
@@ -119,4 +123,5 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
         logging.info("No available runs in experiment. Skipping...")
         migration_result = "Experiment doesn't have runs"
 
+    # TODO: Modify Sensor class so it allows logging data types other than str
     return migration_result

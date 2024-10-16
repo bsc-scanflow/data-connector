@@ -6,6 +6,7 @@ logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
 logging.getLogger().setLevel(logging.INFO)
 
+
 # Actuator class
 class NearbyOneActuator:
     # (hardcoded) Available Site IDs
@@ -15,7 +16,6 @@ class NearbyOneActuator:
         ("eb0e3eaa-b668-4ad6-bc10-2bb0eb7da259", "k8s-edge-cluster")
     ]
 
-
     def get_next_site_id(self, source_site_id: str):
         """
         Return the next site_id in the site_ids array
@@ -23,12 +23,12 @@ class NearbyOneActuator:
         """
         for i, (site_id, site_name) in enumerate(self.site_ids):
             if site_id == source_site_id:
-                if i == len(self.site_ids) -1:
+                if i == len(self.site_ids) - 1:
                     return self.site_ids[0]
                 else:
                     return self.site_ids[i + 1]
         # Return None if there's no site_id match!
-        return (None, None)
+        return None, None
 
     def get_site_id_name(self, current_site_id: str) -> str:
         """
@@ -47,7 +47,6 @@ class NearbyOneActuator:
         """
         pass
 
-
     @staticmethod
     def find_service(services: list, service_name: str):
         """
@@ -56,14 +55,12 @@ class NearbyOneActuator:
         """
         pass
 
-
     def delete_service(self, service_id: str):
         """
         Send a DELETE service request to the NearbyOne API
         return: HTTP response?
         """
         pass
-
 
     @staticmethod
     def compose_deploy_service_payload(site_id: str, service_name: str):
@@ -73,7 +70,6 @@ class NearbyOneActuator:
         """
         pass
 
-
     def deploy_service(self, deploy_service_payload: dict):
         """
         Send a POST service creation request to the NearbyOne API
@@ -81,13 +77,11 @@ class NearbyOneActuator:
         """
         pass
 
-
     def close_session(self):
         """
         Close the session with NearbyOne Orchestrator
         """
         self.session.close()
-
 
     def migrate_service(self, service_name: str, source_cluster_id: str) -> str:
         """
@@ -109,6 +103,8 @@ class NearbyOneActuator:
 
         # - Deploy the service_name using the DeployServiceChainArgs
         logging.info("Migrating service. Coming soon!")
+
+        # Compose and return the migration results
         migration_result = {
             "service_name": service_name,
             "source_cluster_id": source_cluster_id,
@@ -118,14 +114,7 @@ class NearbyOneActuator:
         }
 
         logging.debug(str(migration_result))
-        # Debug - Try to return something else than an integer
-        return json.dumps(
-            obj=migration_result,
-            indent=2
-        )
-        #return migration_result
-        #return 1
-
+        return migration_result
 
     def __init__(self, api_url: str, username: str, password: str):
         """
