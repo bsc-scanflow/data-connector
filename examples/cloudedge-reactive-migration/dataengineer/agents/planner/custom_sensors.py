@@ -56,8 +56,8 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             # Index not required as of now
             max_idx = latest_run.data.metrics["max_idx"]
 
-            # Check if there's a max_cluster ID value or it is set to None
-            if max_cluster != "None" and qos_constraints(max_qos):
+            # Check if there's a max_cluster ID value, or it is set to None
+            if (max_cluster != "None" and max_qos >= 0) and qos_constraints(max_qos):
 
                 # Proceed to migrate the application
                 logging.info(f"Maximum QoS value {max_qos} found in Cluster ID {max_cluster} is above SLA. Executing application migration...")
@@ -74,6 +74,9 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                     obj=migration_result,
                     indent=2
                 )
+            elif max_qos < 0:
+                logging.info("No QoS values available! Either the application is not deployed or there are no dlpipelines running")
+                migration_result = "No QoS values available! Either the application is not deployed or there are no dlpipelines running"
             else:
                 # Nothing to do
                 logging.info("QoS below SLA. No migration required.")
