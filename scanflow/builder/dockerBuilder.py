@@ -357,6 +357,8 @@ class DockerBuilder(builder.Builder):
 
         #start
         template += dedent(f'''
+             ENV PYTHONPATH="$PYTHONPATH:/scanflow/scanflow/scanflow/agent/template/{agent.template}"
+                           
              CMD [ "cp /agent/* /scanflow/scanflow/scanflow/agent/template/{agent.template} && uvicorn main:agent --reload --host 0.0.0.0 --port 8080" ]
         ''')
 
