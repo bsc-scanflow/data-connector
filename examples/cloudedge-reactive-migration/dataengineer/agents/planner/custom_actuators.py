@@ -6,6 +6,9 @@ logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
 logging.getLogger().setLevel(logging.INFO)
 
+# TODO: Import Nearby API client and KratosClient for authentication
+from nbi_client import NbiClient
+
 
 # Actuator class
 class NearbyOneActuator:
@@ -116,23 +119,25 @@ class NearbyOneActuator:
         logging.debug(str(migration_result))
         return migration_result
 
-    def __init__(self, api_url: str, username: str, password: str):
+    def __init__(self, env_name: str, org_id: str, username: str, password: str):
         """
         Initialize a NearbyOneActuator object
         """
         # TODO: test authentication!
-        self.api_url: str = api_url
+        self.env_name: str = env_name
+        self.org_id: str = org_id
         self.session: requests.Session = requests.Session()
         # We expect BasicAuth for NearbyOne API server
         self.session.auth = (username, password)
         self.session.headers.update({"Accept": "application/json"})
 
 
-def migrate_application(app_name: str, current_cluster_id: str, nearbyone_url: str, nearbyone_username: str, nearbyone_password: str) -> str:
+def migrate_application(app_name: str, current_cluster_id: str, nearbyone_env_name: str, nearbyone_org_id: str, nearbyone_username: str, nearbyone_password: str) -> str:
 
     # Initialize a NearbyOneActuator
     nearby_actuator = NearbyOneActuator(
-        api_url=nearbyone_url,
+        env_name=nearbyone_env_name,
+        org_id=nearbyone_org_id,
         username=nearbyone_username,
         password=nearbyone_password
     )

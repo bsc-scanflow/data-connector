@@ -65,9 +65,10 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                 migration_result = migrate_application(
                     app_name=kwargs["app_name"],
                     current_cluster_id=max_cluster,
-                    nearbyone_url=kwargs["nearbyone_url"],
-                    nearbyone_username=kwargs["nearbyone_username"],
-                    nearbyone_password=kwargs["nearbyone_password"]
+                    nearbyone_env_name=kwargs["nearbyone_env_name"],
+                    nearbyone_org_id=kwargs["nearbyone_organization_id"],
+                    nearbyone_username=kwargs["nearbyone_env_username"],
+                    nearbyone_password=kwargs["nearbyone_env_password"]
                 )
                 # Workaround: Sensor return value is expected to be str
                 migration_result = json.dumps(
