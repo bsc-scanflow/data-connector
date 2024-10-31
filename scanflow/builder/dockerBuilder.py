@@ -348,6 +348,12 @@ class DockerBuilder(builder.Builder):
                    ENV sensors '{sensors}' 
             ''')
             template += sensors_env_template
+        #requirements
+        if agent.requirements is not None:
+            req_template = dedent(f'''
+                    RUN pip install -r /agent/{agent.requirements}
+            ''')
+            template  += req_template
 
         #start
         template += dedent(f'''

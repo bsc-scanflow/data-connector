@@ -185,9 +185,10 @@ class ScanflowClient:
             dockerfile: str = None,
             image: str = None,
             image_pull_secret: str = None,
-            image_pull_policy: str = "Always"
+            image_pull_policy: str = "Always",
+            requirements: str = None
         ):
-        return Agent(name, template, sensors, dockerfile, image, image_pull_secret=image_pull_secret, image_pull_policy=image_pull_policy)
+        return Agent(name, template, sensors, dockerfile, image, image_pull_secret=image_pull_secret, image_pull_policy=image_pull_policy, requirements=requirements)
 
 
 #scalers
