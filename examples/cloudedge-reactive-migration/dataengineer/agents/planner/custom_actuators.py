@@ -119,7 +119,7 @@ class NearbyOneActuator:
         logging.debug(str(migration_result))
         return migration_result
 
-    def __init__(self, env_name: str, org_id: str, username: str, password: str):
+    def __init__(self, env_name: str, org_id: str, email: str, password: str):
         """
         Initialize a NearbyOneActuator object
         """
@@ -128,17 +128,17 @@ class NearbyOneActuator:
         self.org_id: str = org_id
         self.session: requests.Session = requests.Session()
         # We expect BasicAuth for NearbyOne API server
-        self.session.auth = (username, password)
+        self.session.auth = (email, password)
         self.session.headers.update({"Accept": "application/json"})
 
 
-def migrate_application(app_name: str, current_cluster_id: str, nearbyone_env_name: str, nearbyone_org_id: str, nearbyone_username: str, nearbyone_password: str) -> str:
+def migrate_application(app_name: str, current_cluster_id: str, nearbyone_env_name: str, nearbyone_org_id: str, nearbyone_email: str, nearbyone_password: str) -> str:
 
     # Initialize a NearbyOneActuator
     nearby_actuator = NearbyOneActuator(
         env_name=nearbyone_env_name,
         org_id=nearbyone_org_id,
-        username=nearbyone_username,
+        email=nearbyone_email,
         password=nearbyone_password
     )
     

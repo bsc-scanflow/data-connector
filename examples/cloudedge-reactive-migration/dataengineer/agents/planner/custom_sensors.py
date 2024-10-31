@@ -67,7 +67,7 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                     current_cluster_id=max_cluster,
                     nearbyone_env_name=kwargs["nearbyone_env_name"],
                     nearbyone_org_id=kwargs["nearbyone_organization_id"],
-                    nearbyone_username=kwargs["nearbyone_env_username"],
+                    nearbyone_email=kwargs["nearbyone_env_email"],
                     nearbyone_password=kwargs["nearbyone_env_password"]
                 )
                 # Workaround: Sensor return value is expected to be str
