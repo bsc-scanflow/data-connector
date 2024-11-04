@@ -100,9 +100,9 @@ class NbiClient:
             logging.error(f"Error fetching device details: {e}")
             return None
 
-    def get_all_deployed_services(self) -> List[ServiceChainResponse]:
+    def get_all_deployed_services(self, site_ids:list[str] = None) -> List[ServiceChainResponse]:
         try:
-            services = self.services_api.get_all_deployed_services()
+            services = self.services_api.get_all_deployed_services(site_ids=site_ids)
             return services
         except Exception as e:
             logging.error(f"Error fetching all deployed services: {e}")
