@@ -142,7 +142,7 @@ class NearbyOneActuator:
         
         # TODO - Load the override values YAML
         # - These might come from an external YAML
-        override_values = ""
+        override_values = None
 
         # Compose the BlockArgsDeploy object
         block_args: BlockArgsDeploy = BlockArgsDeploy(
