@@ -195,7 +195,10 @@ class NearbyOneActuator:
         if source_service:
             logging.info(f"Source service {source_service.name} found!")
         else:
-            logging.error(f"Source service {source_service_name} not found! Unable to remove it after migration")
+            logging.error(f"Source service {source_service_name} not found! It might've been already migrated on previous checks")
+            return {
+                "message": "Service already migrated in previous executions"
+            }
 
         # - Find the dest_cluster
         dest_site = self.get_next_site(source_site=source_site)
