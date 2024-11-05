@@ -164,12 +164,13 @@ class NearbyOneActuator:
 
         # Deploy the new service
         response = self.nbi_client.deploy_service(deploy_args=deploy_args.model_dump())
-        
+        logging.info(f"Deployed service response: {response}")
+
         if not response:
             return None
         
         # Return the deployed service
-        return self.nbi_client.get_deployed_service(service_id=response.strip('"'))
+        return self.nbi_client.get_deployed_service(service_id=response.strip('"')).service_chain
         
 
     def migrate_service(self, app_name: str, source_cluster_id: str) -> str:
@@ -203,6 +204,8 @@ class NearbyOneActuator:
         logging.info("Migrating service...")
         dest_service = self.deploy_service(site=dest_site, app_name=app_name)
         
+        logging.info(f"Deployed service: {dest_service}")
+
         if not dest_service:
             logging.error("Service couldn't be deployed!")
             return {
