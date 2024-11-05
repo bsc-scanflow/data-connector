@@ -152,6 +152,9 @@ class NearbyOneActuator:
             blockChartVersion=marketplace_chart.all_versions[0], # Retrieve latest version by default
             values=override_values # Override block chart values 
         )
+        # DEBUG
+        logging.info(f"For debugging purposes - Destination service BlockArgsDeploy:")
+        logging.info(f"{block_args.to_dict()}")
 
         # Compose the required DeployServiceChainArgs payload with the new service_name and the new dest_cluster
         dest_service_name = f"{app_name} - {site.display_name}"
