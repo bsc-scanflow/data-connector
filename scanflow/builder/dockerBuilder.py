@@ -22,8 +22,9 @@ logging.getLogger().setLevel(logging.INFO)
 
 class DockerBuilder(builder.Builder):
     def __init__(self,
-                 registry: str):
-        super(DockerBuilder, self).__init__(registry)
+                 registry: str,
+                 network_mode: str = None):
+        super(DockerBuilder, self).__init__(registry, network_mode)
         self.client = docker.from_env()
 
     def build_ScanflowApplication(self, app: Application, trackerPort: int, image_pull_secret: str = None):
@@ -121,7 +122,8 @@ class DockerBuilder(builder.Builder):
                             "GIT_AUTH_USERNAME": auth_config['username'],
                             "GIT_AUTH_TOKEN": auth_config['password']
                         } if auth_config else None,
-                        tag=f"{image_name}:{image_tag}"
+                        tag=f"{image_name}:{image_tag}",
+                        network_mode=self.network_mode
                     )
                     logging.info(f'[+] Image [{source.name}] was built successfully. image_tag {image.tags}')
 

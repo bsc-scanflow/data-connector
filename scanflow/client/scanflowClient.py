@@ -43,7 +43,8 @@ class ScanflowClient:
                  builder: str = "docker",
                  registry : str = "registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry",
                  scanflow_server_uri : str = None,
-                 verbose=True):
+                 verbose: bool = True,
+                 docker_network_mode: str = None):
         """
         """
         self.verbose = verbose
@@ -55,12 +56,12 @@ class ScanflowClient:
             raise ValueError("Scanflow_server_uri is not provided")
         self.scanflow_server_uri = get_server_uri()
 
-        self.builderbackend = self.get_builder(builder, registry)
+        self.builderbackend = self.get_builder(builder, registry, docker_network_mode)
 
-    def get_builder(self, builder, registry):
+    def get_builder(self, builder, registry, docker_network_mode: str = None):
         if builder == "docker":
             from scanflow.builder import DockerBuilder
-            return DockerBuilder(registry)
+            return DockerBuilder(registry, network_mode=docker_network_mode)
         else:
             logging.info(f"unknown builder backend {builder}")
 
