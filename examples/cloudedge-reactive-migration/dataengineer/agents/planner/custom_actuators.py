@@ -110,14 +110,6 @@ class NearbyOneActuator:
             
         return None
 
-    def compose_deploy_service_payload(self, site: Site, app_name: str) -> DeployServiceChainArgs:
-        """
-        Compose a DeployServiceChainArgs schema object in JSON format with provided site_id and service_name
-        :return DeployServiceChainArgs object in JSON format
-        """
-        
-        return None
-
     def deploy_service(self, site: Site, app_name: str) -> ServiceChainResponseServiceChain:
         """
         Send a POST service creation request to the NearbyOne API
