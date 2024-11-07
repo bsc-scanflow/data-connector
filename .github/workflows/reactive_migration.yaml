@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - 'main'
+      - 'pipeline_integration'
     paths:
       - examples/cloudedge-reactive-migration/**
       - tutorials/cloudedge-reactive-migration/**
@@ -12,6 +13,7 @@ on:
     branches:
       - 'feat/reactive-migration-**'
       - 'main'
+      - 'pipeline_integration'
     paths:
       - examples/cloudedge-reactive-migration/**
       - tutorials/cloudedge-reactive-migration/**
