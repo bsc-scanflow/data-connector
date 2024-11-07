@@ -1,0 +1,14 @@
+requests >= 2.31.0
+# NbiClient
+git+https://github.com/nbycomp/inno-nbi-service-orchestration-api-client.git#egg=inno_nbi_api&subdirectory=client_gen
+
+# Dependencies for kratos_client.py and nbi_client.py
+requests >= 2.32.3
+python-dotenv==1.0.1
+
+# Dependencies for actuator
+PyYAML==6.0.2
+
+# New dependencies for Scanflow Agent 
+# TODO: regenerate scanflow-agent image with new and additional dependencies
+pydantic-settings>=2.6.0

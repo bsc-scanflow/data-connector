@@ -6,6 +6,7 @@
 #     MLFLOW_S3_ENDPOINT_URL : Optional[str] = "http://minio.scanflow-server.svc.cluster.local"
 #     AWS_ENDPOINT_URL: Optional[str] = "http://minio.scanflow-server.svc.cluster.local"
 
+
 # class ScanflowTrackerConfig():
 #     TRACKER_STORAGE: Optional[str] = "postgresql://postgres:scanflow123@scanflow-postgres.scanflow-server.svc.cluster.local/scanflow-default"
 #     TRACKER_ARTIFACT: Optional[str] = "s3://scanflow-default"
@@ -27,6 +28,7 @@
 #     #    "MLFLOW_S3_ENDPOINT_URL": "http://minio.minio-system.svc.cluster.local:9000",
 #     #    "AWS_ENDPOINT_URL": "http://minio.scanflow-server.svc.cluster.local"  
 #     #}
+#     image_pull_secret: Optional[ScanflowImagePullSecret] = ScanflowImagePullSecret()
 #     #configmap tracker
 #     tracker_config : Optional[ScanflowTrackerConfig] = ScanflowTrackerConfig()
 #     #configmap_tracker_data : Optional[dict] = {
@@ -42,7 +44,6 @@
 #     #configmap_localscanflow_data : Optional[dict] = {
 #     #    "SCANFLOW_TRACKER_LOCAL_URI" : "http://scanflow-tracker.scanflow-default.svc.cluster.local"
 #     #}
-
 
 
 from typing import Optional
@@ -65,6 +66,28 @@ class ScanflowSecret:
             "MLFLOW_S3_ENDPOINT_URL": self.MLFLOW_S3_ENDPOINT_URL,
             "AWS_ENDPOINT_URL": self.AWS_ENDPOINT_URL
         }
+
+class ScanflowImagePullSecret():
+    def __init__(self,
+                registry: Optional[str] = None,
+                name: Optional[str] = None,
+                username: Optional[str] = None,
+                password: Optional[str] = None,
+                email: Optional[str] = None) -> None:
+        self.registry = registry
+        self.name = name
+        self.username = username
+        self.password = password
+        self.email = email
+    
+    def to_dict(self):
+        return {
+            "registry": self.registry,
+            "name": self.name,
+            "username": self.username 
+        }
+
+
 
 class ScanflowTrackerConfig:
     def __init__(self,
@@ -99,10 +122,12 @@ class ScanflowEnvironment:
     def __init__(self,
                  namespace: Optional[str] = "scanflow-default",
                  secret: Optional[ScanflowSecret] = ScanflowSecret(),
+                 image_pull_secret: Optional[ScanflowImagePullSecret] = ScanflowImagePullSecret(),
                  tracker_config: Optional[ScanflowTrackerConfig] = ScanflowTrackerConfig(),
                  client_config: Optional[ScanflowClientConfig] = ScanflowClientConfig()):
         self.namespace = namespace
         self.secret = secret
+        self.image_pull_secret = image_pull_secret
         self.tracker_config = tracker_config
         self.client_config = client_config
 
@@ -110,9 +135,11 @@ class ScanflowEnvironment:
         return {
             "namespace": self.namespace,
             "secret": self.secret.to_dict(),
+            "image_pull_secret": self.image_pull_secret.to_dict(),
             "tracker_config": self.tracker_config.to_dict(),
             "client_config": self.client_config.to_dict()
         }
+
 
 
 

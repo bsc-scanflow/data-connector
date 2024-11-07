@@ -1,4 +1,6 @@
-from pydantic import AnyHttpUrl, BaseSettings, PyObject, BaseModel
+from pydantic import AnyHttpUrl, BaseModel
+from pydantic.types import ImportString
+from pydantic_settings import BaseSettings
 from typing import List, Dict
 from scanflow.agent.schemas.sensor import SensorCallable
 

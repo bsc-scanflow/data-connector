@@ -5,7 +5,7 @@ import json
 from textwrap import dedent
 
 import scanflow.builder.builder as builder
-
+from scanflow.tools import env
 from scanflow.app import Application, Executor, Service, Node, Workflow, Tracker, Agent, Sensor, IntervalTrigger, DateTrigger, CronTrigger, BaseTrigger
 from datetime import datetime
 
@@ -22,22 +22,23 @@ logging.getLogger().setLevel(logging.INFO)
 
 class DockerBuilder(builder.Builder):
     def __init__(self,
-                 registry: str):
-        super(DockerBuilder, self).__init__(registry)
+                 registry: str,
+                 network_mode: str = None):
+        super(DockerBuilder, self).__init__(registry, network_mode)
         self.client = docker.from_env()
 
-    def build_ScanflowApplication(self, app: Application, trackerPort: int):
+    def build_ScanflowApplication(self, app: Application, trackerPort: int, image_pull_secret: str = None):
         self.paths = get_scanflow_paths(app.app_dir)
         if app.agents is not None:
             self.build_ScanflowAgents(app.app_name, app.team_name, app.agents)
         if app.workflows is not None:
             self.build_ScanflowWorkflows(app.app_name, app.team_name, app.workflows)
         if app.tracker is None:
-            app.tracker = self.build_ScanflowTracker(nodePort=trackerPort)
+            app.tracker = self.build_ScanflowTracker(nodePort=trackerPort, image_pull_secret=image_pull_secret)
         return app
     
-    def build_ScanflowTracker(self, nodePort: int):
-        return Tracker(nodePort)
+    def build_ScanflowTracker(self, nodePort: int, image_pull_secret: str):
+        return Tracker(nodePort=nodePort, image_pull_secret=image_pull_secret)
 
     def build_ScanflowAgents(self, name, team_name, agents: List[Agent]):
         for agent in agents:
@@ -62,6 +63,19 @@ class DockerBuilder(builder.Builder):
 
 
     def __build_image_to_registry(self, name, long_name, source):
+        
+        # Translate any undesired character in tags
+        image_tag = env.get_env("DOCKER_TAG").translate(
+            str.maketrans(
+                {
+                    "/": "-",
+                    "'": "-",
+                    "\\": "-"
+                }
+            )
+        )
+        if not image_tag:
+            image_tag = "latest"
 
         if isinstance(source, Agent):
             image_name = f"{self.registry}/{name}-{long_name}-{source.name}-agent"
@@ -70,8 +84,8 @@ class DockerBuilder(builder.Builder):
         logging.info(f"Building image {image_name}")
 
         try:
-            image = self.client.images.get(image_name)
-            logging.info(f"[+] Image [{image_name}] has been found in repository. {image.tags[0]}.")
+            image = self.client.images.get(f"{image_name}:{image_tag}")
+            logging.info(f"[+] Image [{image_name}:{image_tag}] has been found in repository. {image.tags[0]}.")
             return image.tags[0]
     
         except docker.api.client.DockerException as e:
@@ -93,30 +107,44 @@ class DockerBuilder(builder.Builder):
             logging.info(f"dockerfile for using {dockerfile} from {build_path}")
             
             try:
-                if dockerfile is not None:    
-                    image, stat = self.client.images.build(path=build_path,
-                                          dockerfile=dockerfile,
-                                        tag=image_name)
+                if dockerfile is not None:
+                    #TODOs: add the cred to k8s secret
+                    auth_config = {
+                        'username': env.get_env("DOCKER_REGISTRY_USERNAME"),
+                        'password': env.get_env("DOCKER_REGISTRY_PASSWORD")
+                    } if env.get_env("DOCKER_REGISTRY_USERNAME") else None
+                    
+                    # Workaround: include Git authentication credentials as buildargs to fetch git repositories during build
+                    image, stat = self.client.images.build(
+                        path=build_path,
+                        dockerfile=dockerfile,
+                        buildargs={
+                            "GIT_AUTH_USERNAME": auth_config['username'],
+                            "GIT_AUTH_TOKEN": auth_config['password']
+                        } if auth_config else None,
+                        tag=f"{image_name}:{image_tag}",
+                        network_mode=self.network_mode
+                    )
                     logging.info(f'[+] Image [{source.name}] was built successfully. image_tag {image.tags}')
 
                     try:
-                        # self.client.images.push(image_name)
-                        #TODOs: add the cred to k8s secret
-                        encoded_creds_gitlab = "Y2xvdWRza2luLW5jbG91ZDI6cE54emZQNm5TWWJMeEJWM1lHaGk="
-                        decoded_creds_gitlab = base64.b64decode(encoded_creds_gitlab).decode('utf-8')
-                        username_gitlab, password_gitlab = decoded_creds_gitlab.split(':')
+                        
+                        
+                        logs = self.client.images.push(
+                            repository=f"{image_name}", 
+                            tag=image_tag,
+                            auth_config = auth_config
+                        )
 
-                        auth_config_gitlab = {
-                            'username': username_gitlab,
-                            'password': password_gitlab
-                        }
-                        self.client.images.push(repository=f"{self.registry}/{image_name}", 
-                                                tag="latest",
-                                                auth_config=auth_config_gitlab)
-
+                        # Push method doesn't raise an exception when failing, although docs say they raise a docker.errors.APIError
+                        # Workaround: poor man's error catch:
+                        for line in logs.split('\n'):
+                            if "errorDetail" in line:
+                                raise docker.errors.APIError(line)
+                        
                         logging.info(f'[+] Image [{source.name}] was pushed to registry successfully.')
-                    except docker.api.client.DockerException as e:
-                        logging.info(f'[+] Image [{source.name}] push failed {e}.')
+                    except (docker.api.client.DockerException, docker.errors.APIError) as e:
+                        logging.info(f'[-] Image [{source.name}] push failed {e}.')
 
                     return image.tags[0]
             except docker.api.client.DockerException as e:
@@ -206,7 +234,7 @@ class DockerBuilder(builder.Builder):
                         ENTRYPOINT ["python", "/app/{executor.name}/{executor.mainfile}"]
                     ''')
             elif executor.mainfile.endswith('.sh'):
-	            exec_template = dedent(f''' 
+                exec_template = dedent(f''' 
                     ENTRYPOINT ["/bin/bash", "-c", "/app/{executor.name}/{executor.mainfile}"]
                 ''')
             template += exec_template
@@ -322,9 +350,17 @@ class DockerBuilder(builder.Builder):
                    ENV sensors '{sensors}' 
             ''')
             template += sensors_env_template
+        #requirements
+        if agent.requirements is not None:
+            req_template = dedent(f'''
+                    RUN pip install -r /agent/{agent.requirements}
+            ''')
+            template  += req_template
 
         #start
         template += dedent(f'''
+             ENV PYTHONPATH="$PYTHONPATH:/scanflow/scanflow/scanflow/agent/template/{agent.template}"
+                           
              CMD [ "cp /agent/* /scanflow/scanflow/scanflow/agent/template/{agent.template} && uvicorn main:agent --reload --host 0.0.0.0 --port 8080" ]
         ''')
 

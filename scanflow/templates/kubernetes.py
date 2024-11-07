@@ -5,6 +5,8 @@ from typing import List, Dict
 import yaml
 import pyaml
 import json
+import base64
+
 from scanflow.tools.seldon_dict import remove_empty_elements, verify_dict
 #from pick import pick  # install pick using `pip install pick`
 
@@ -171,6 +173,45 @@ class Kubernetes:
         secret.string_data = stringData
         return secret
 
+    def build_image_pull_secret(self, name, namespace, secret_data):
+        """
+        Compose the image pull secret object from a docker config in JSON format
+        """
+
+        # Compose the authentication string
+        auth = base64.b64encode(
+            f"{secret_data.username}:{secret_data.password}".encode("utf-8")
+            ).decode("utf-8")
+
+        # Compose the Docker authentication dictionary
+        docker_config_dict = {
+            "auths": {
+                secret_data.registry: {
+                    "username": secret_data.username,
+                    "password": secret_data.password,
+                    "email": secret_data.email,
+                    "auth": auth
+                }
+            }
+        }
+
+        # Convert the docker config dict into a decoded string data
+        docker_config_data = base64.b64encode(
+            json.dumps(docker_config_dict).encode("utf-8")
+        ).decode("utf-8")
+
+        secret = client.V1Secret(
+            metadata=client.V1ObjectMeta(
+                name=name,
+                namespace=namespace
+            ),
+            type="kubernetes.io/dockerconfigjson",
+            data = {
+                ".dockerconfigjson": docker_config_data
+            }
+        )
+        return secret
+
     def create_secret(self, namespace, body):
         api_instance = client.CoreV1Api()
         #try:
@@ -180,6 +221,13 @@ class Kubernetes:
         #except:
         #    logging.error(f"create_secret error")
         #    return False
+
+    def get_object_reference(self, namespace: str, name: str) -> client.V1ObjectReference:
+        k8s_object = client.V1ObjectReference(
+            name = name,
+            namespace = namespace
+        )
+        return k8s_object
 
     def delete_secret(self, namespace, name):
         api_instance = client.CoreV1Api()
@@ -324,7 +372,7 @@ class Kubernetes:
 
 
 
-    def build_deployment(self, namespace=None, name=None, label=None, image=None, volumes=None, env=None, env_from=None, volumeMounts=None): 
+    def build_deployment(self, namespace=None, name=None, label=None, image=None, volumes=None, env=None, env_from=None, volumeMounts=None, image_pull_secret:client.V1Secret=None, image_pull_policy:str = "Always"):
         spec = client.V1DeploymentSpec(
             selector=client.V1LabelSelector(match_labels={label:name}),
             template=client.V1PodTemplateSpec(),
@@ -333,7 +381,7 @@ class Kubernetes:
         container = client.V1Container(
             name=name,
             image=image,
-            image_pull_policy="Always",
+            image_pull_policy=image_pull_policy,
             env=env,
             env_from=env_from,
             volume_mounts=volumeMounts
@@ -344,7 +392,8 @@ class Kubernetes:
         )
         spec.template.spec = client.V1PodSpec(
             containers = [container],
-            volumes= volumes
+            volumes= volumes,
+            image_pull_secrets=[image_pull_secret] if image_pull_secret else None
         )
 
         deployment = client.V1Deployment(

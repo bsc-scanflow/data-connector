@@ -1,11 +1,13 @@
 from scanflow.app import Application, Node, Workflow, Agent
 class Builder():
     def __init__(self,
-                 registry: str):
+                 registry: str,
+                 network_mode: str = None):
         """
           builder is used to generate image from the source code user provided and submit the meta data to scanflow server
         """
         self.registry = registry
+        self.network_mode = network_mode
 
     def build_ScanflowApplication(self, app: Application, trackerPort: int):
         """
