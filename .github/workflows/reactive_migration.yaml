@@ -1,9 +1,13 @@
 name: Execute Reactive Migration notebook
 
 on:
+  pull_request_target:
+    branches:
+      - main
   push:
     branches:
-      - feat/reactive-migration
+      - feat/reactive-migration-*
+      - main
     paths:
       - examples/cloudedge-reactive-migration/**
       - tutorials/cloudedge-reactive-migration/**
