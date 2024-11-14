@@ -76,7 +76,8 @@ class NearbyOneActuator:
         :return Array of ServiceChainResponseServiceChain objects
         """
         
-        return [service_chain_response.service_chain for service_chain_response in self.nbi_client.get_all_deployed_services(site_ids=[site.id])]
+        return [service_chain_response.service_chain for service_chain_response
+                in self.nbi_client.get_all_deployed_services(site_ids=[site.id])]
 
     def get_service(self, site: Site, service_name: str) -> ServiceChainResponseServiceChain | None:
         """
@@ -130,7 +131,12 @@ class NearbyOneActuator:
         )
 
         if not block_chart:
-            logging.error(f"Block Chart {marketplace_chart.name} version {marketplace_chart.all_versions[0]} doesn't exist! Can't be deployed")
+            logging.error(
+                (
+                    f"Block Chart {marketplace_chart.name} "
+                    f"version {marketplace_chart.all_versions[0]} doesn't exist! Can't be deployed"
+                )
+            )
             return None
         
         # TODO - Load the override values YAML
@@ -142,8 +148,8 @@ class NearbyOneActuator:
             site_id=site.id,
             displayName=marketplace_chart.display_name,
             blockChartName=marketplace_chart.name,
-            blockChartVersion=marketplace_chart.all_versions[0], # Retrieve latest version by default
-            values=override_values # Override block chart values 
+            blockChartVersion=marketplace_chart.all_versions[0],  # Retrieve latest version by default
+            values=override_values  # Override block chart values
         )
         # DEBUG
         logging.info(f"For debugging purposes - Destination service BlockArgsDeploy:")
@@ -209,12 +215,20 @@ class NearbyOneActuator:
 
         # - Find the service with the given source_service_name
         source_service_name: str = f"{app_name} - {source_site.display_name}"
-        source_service: ServiceChainResponseServiceChain = self.get_service(site=source_site, service_name=source_service_name)
+        source_service: ServiceChainResponseServiceChain = self.get_service(
+            site=source_site,
+            service_name=source_service_name
+        )
         
         if source_service:
             logging.info(f"Source service {source_service.name} found!")
         else:
-            logging.error(f"Source service {source_service_name} not found! It might've been already migrated on previous checks")
+            logging.error(
+                (
+                    f"Source service {source_service_name} not found! "
+                    f"It might've been already migrated on previous checks"
+                )
+            )
             return {
                 "message": "Service already migrated in previous executions"
             }
@@ -261,9 +275,11 @@ class NearbyOneActuator:
         self.nbi_client = NbiClient()
 
 
-def migrate_application(app_name: str, current_cluster_id: str, nearbyone_env_name: str, nearbyone_org_id: str, nearbyone_email: str, nearbyone_password: str) -> dict:
+def migrate_application(
+        app_name: str, current_cluster_id: str, nearbyone_env_name: str, nearbyone_org_id: str,
+        nearbyone_email: str, nearbyone_password: str) -> dict:
 
-    # TODO: initialize somewhere the following environment variables, required for KratosClient. Maybe during NbiClient initialization?
+    # Initialize environment variables required for KratosClient
     os.environ["NBY_ENV_EMAIL"] = nearbyone_email
     os.environ["NBY_ENV_PASSWORD"] = nearbyone_password
     os.environ["NBY_ORGANIZATION_ID"] = nearbyone_org_id
