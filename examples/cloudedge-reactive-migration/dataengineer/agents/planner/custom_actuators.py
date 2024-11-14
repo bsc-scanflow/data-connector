@@ -1,27 +1,27 @@
+from __future__ import annotations
+
 import logging
-import requests
-import json
 import os
-import yaml
+
+# Import Nearby API client and KratosClient for authentication
+from nbi_client import NbiClient
+from inno_nbi_api import Site
+from inno_nbi_api import ServiceChainResponseServiceChain
+from inno_nbi_api import DeployServiceChainArgs
+from inno_nbi_api import ChartRepoIndexEntry
+from inno_nbi_api import BlockArgsDeploy
+from time import sleep
 
 logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
 logging.getLogger().setLevel(logging.INFO)
-
-# TODO: Import Nearby API client and KratosClient for authentication
-from nbi_client import NbiClient
-from inno_nbi_api.models.site_response import Site
-from inno_nbi_api.models.service_chain_response import ServiceChainResponseServiceChain
-from inno_nbi_api.models.deploy_service_chain_args import DeployServiceChainArgs
-from inno_nbi_api.models.chart_repo_index_entry import ChartRepoIndexEntry
-from inno_nbi_api.models.block_args_deploy import BlockArgsDeploy
 
 
 # Actuator class
 class NearbyOneActuator:
     # Available Sites
     # - Retrieve Sites from NearbyOne API
-    sites: list[type[Site]]
+    sites: list[Site]
 
     def update_available_sites(self, description: str = "") -> None:
         """
@@ -29,8 +29,8 @@ class NearbyOneActuator:
         :return None
         """
         # Initialize a new site_ids list
-        new_sites: list[type[Site]] = []
-        # Go through all of the available organizations' sites
+        new_sites: list[Site] = []
+        # Go through all the available organizations' sites
         for org in self.nbi_client.org_api.get_organizations():
             for site_id in org.sites:
                 site = self.nbi_client.infra_api.get_site_details(site_id=site_id).site
@@ -40,7 +40,7 @@ class NearbyOneActuator:
                 
         self.sites = new_sites
 
-    def get_site(self, site_id: str) -> Site:
+    def get_site(self, site_id: str) -> Site | None:
         """
         Return a Site object that matches the provided site_id
         :return Site
@@ -52,11 +52,11 @@ class NearbyOneActuator:
         # Return empty if not found
         return None
 
-    def get_next_site(self, source_site: Site) -> Site:
+    def get_next_site(self, source_site: Site) -> Site | None:
         """
         Return the next site in the site_ids array
         If site is the last one, return the first one
-        :param Source Site
+        :param source_site: Source Site
         :return Next Site in array
         """
         for i, site in enumerate(self.sites):
@@ -69,16 +69,16 @@ class NearbyOneActuator:
         # Return None if there's no site.id match!
         return None
 
-    def get_all_services(self, site: Site) -> list[type[ServiceChainResponseServiceChain]]:
+    def get_all_services(self, site: Site) -> list[ServiceChainResponseServiceChain]:
         """
         Return available services in a given site
-        :param Site where to get services from
+        :param site: Site where to get services from
         :return Array of ServiceChainResponseServiceChain objects
         """
         
         return [service_chain_response.service_chain for service_chain_response in self.nbi_client.get_all_deployed_services(site_ids=[site.id])]
 
-    def get_service(self, site: Site, service_name: str) -> ServiceChainResponseServiceChain:
+    def get_service(self, site: Site, service_name: str) -> ServiceChainResponseServiceChain | None:
         """
         Return a service from the services array with the same service_name as the given one
         :return ServiceChainResponseServiceChain object
@@ -94,11 +94,12 @@ class NearbyOneActuator:
     def delete_service(self, service: ServiceChainResponseServiceChain) -> str:
         """
         Send a DELETE service request to the NearbyOne API
-        :return deleted service.id if deletion has been successful
+        :param service: service chain values
+        :return deleted "service.id" if deletion has been successful
         """
         return self.nbi_client.delete_service_chain_by_id(service_id=service.id)
 
-    def get_marketplace_chart(self, chart_name: str) -> ChartRepoIndexEntry:
+    def get_marketplace_chart(self, chart_name: str) -> ChartRepoIndexEntry | None:
         """
         Retrieve the Marketplace Chart based on its name
         :return ChartRepoIndexEntry
@@ -110,12 +111,12 @@ class NearbyOneActuator:
             
         return None
 
-    def deploy_service(self, site: Site, app_name: str) -> ServiceChainResponseServiceChain:
+    def deploy_service(self, site: Site, app_name: str) -> ServiceChainResponseServiceChain | None:
         """
         Send a POST service creation request to the NearbyOne API
         :param site: The NearbyOne site where to deploy a new service_name block
         :type site: Site
-        :param service_name: The Marketplace service name to deploy
+        :param app_name: The Marketplace service name to deploy
         :return HTTP response?
         """
 
@@ -158,17 +159,40 @@ class NearbyOneActuator:
         )
 
         # Deploy the new service
-        response = self.nbi_client.deploy_service(deploy_args=deploy_args.model_dump())
-        logging.info(f"Deployed service response: {response}")
+        max_retries = 5
+        retry = 0
+        response = None
+        while retry < max_retries:
+            # Sleep for 5 seconds before checking the deployed service status
+            if not response:
+                response = self.nbi_client.deploy_service(deploy_args=deploy_args.model_dump())
+            sleep(5)
+            # Retrieve the service ID of the deployed service
+            deployed_service_chain = self.nbi_client.get_deployed_service(service_id=response.strip('"')).service_chain
+            deployed_status = self.nbi_client.OktoStatus[deployed_service_chain.status]
+            logging.info(f"Deployed service status: {deployed_status.name}")
+            match deployed_status:
+                case self.nbi_client.OktoStatus.OKTOSTATUS_ERROR:
+                    # Delete the service and prepare o redeploy it in the next iteration
+                    logging.info("Error deploying service, retrying...")
+                    self.delete_service(service=deployed_service_chain)
+                    response = None
+                case self.nbi_client.OktoStatus.OKTOSTATUS_IN_SYNC:
+                    # Break the loop
+                    break
+                case _:
+                    # Do nothing
+                    pass
+
+            retry += 1
 
         if not response:
             return None
         
         # Return the deployed service
         return self.nbi_client.get_deployed_service(service_id=response.strip('"')).service_chain
-        
 
-    def migrate_service(self, app_name: str, source_cluster_id: str) -> str:
+    def migrate_service(self, app_name: str, source_cluster_id: str) -> dict:
         """
         Proceed to migrate a service running in source_cluster_id to dest_cluster_id.
         If dest_cluster_id is empty, take the next cluster_id after source_cluster_id from self.site_ids array
@@ -212,7 +236,7 @@ class NearbyOneActuator:
         
         # - Delete the service from the source_cluster
         if source_service:
-            deleted_service =  self.delete_service(service=source_service)
+            deleted_service = self.delete_service(service=source_service)
         else:
             deleted_service = "Not found"
         
@@ -237,7 +261,7 @@ class NearbyOneActuator:
         self.nbi_client = NbiClient()
 
 
-def migrate_application(app_name: str, current_cluster_id: str, nearbyone_env_name: str, nearbyone_org_id: str, nearbyone_email: str, nearbyone_password: str) -> str:
+def migrate_application(app_name: str, current_cluster_id: str, nearbyone_env_name: str, nearbyone_org_id: str, nearbyone_email: str, nearbyone_password: str) -> dict:
 
     # TODO: initialize somewhere the following environment variables, required for KratosClient. Maybe during NbiClient initialization?
     os.environ["NBY_ENV_EMAIL"] = nearbyone_email
