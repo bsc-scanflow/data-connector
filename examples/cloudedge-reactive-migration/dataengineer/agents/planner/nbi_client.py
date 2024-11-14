@@ -1,21 +1,30 @@
-import sys
-import os
+from __future__ import annotations
+
 import logging
-from typing import List
+from typing import List, Any
 
 from kratos_client import KratosClient, AuthenticationError, CommunicationError
 from inno_nbi_api import ApiClient, Configuration
-from inno_nbi_api.api.organizations_api import OrganizationsApi
-from inno_nbi_api.api.infrastructure_api import InfrastructureApi
-from inno_nbi_api.api.marketplace_api import MarketplaceApi
-from inno_nbi_api.api.services_api import ServicesApi
+from inno_nbi_api import OrganizationsApi
+from inno_nbi_api import InfrastructureApi
+from inno_nbi_api import MarketplaceApi
+from inno_nbi_api import ServicesApi
 from inno_nbi_api.models import *
+from enum import Enum
 
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
 
 
 class NbiClient:
+    class OktoStatus(Enum):
+        OKTOSTATUS_IN_SYNC = 0
+        OKTOSTATUS_PROGRESSING = 1
+        OKTOSTATUS_DELETING = 2
+        OKTOSTATUS_ERROR = 3
+        OKTOSTATUS_UNKNOWN = 4
+        OKTOSTATUS_PENDING = 5
+
     def __init__(self):
         self.api_client = None
         self.org_api = None
@@ -50,89 +59,78 @@ class NbiClient:
 
     def get_organizations(self) -> List[Organization]:
         try:
-            organizations = self.org_api.get_organizations()
-            return organizations
+            return self.org_api.get_organizations()
         except Exception as e:
             logging.error(f"Error fetching organizations: {e}")
             if hasattr(e, 'body'):
                 logging.error(f"Error response body: {e.body}")
             return []
         
-    def list_marketplace_charts(self) -> MarketplaceChartsResponse:
+    def list_marketplace_charts(self) -> MarketplaceChartsResponse | None:
         try:
-            charts = self.marketplace_api.list_marketplace_charts()
-            return charts
+            return self.marketplace_api.list_marketplace_charts()
         except Exception as e:
             logging.error(f"Error listing marketplace charts: {e}")
             return None
-        
 
-    def fetch_block_chart(self, block_name: str, block_version: str) -> FetchBlockChartResponse:
+    def fetch_block_chart(self, block_name: str, block_version: str) -> FetchBlockChartResponse | None:
         try:
-            block_chart = self.marketplace_api.fetch_block_chart(block_name, block_version)
-            return block_chart
+            return self.marketplace_api.fetch_block_chart(block_name, block_version)
         except Exception as e:
             logging.error(f"Error fetching block chart: {e}")
             return None
-        
-        
-    def deploy_service(self, deploy_args: DeployServiceChainArgs) -> str:
+
+    def deploy_service(self, deploy_args: DeployServiceChainArgs | Any) -> str | None:
         try:
-            response = self.services_api.deploy_service(deploy_args)
-            return response
+            return self.services_api.deploy_service(deploy_args)
         except Exception as e:
             logging.error(f"Error deploying service: {e}")
             return None
 
-    def get_site_details(self, site_id: str) -> SiteResponse:
+    def get_site_details(self, site_id: str) -> SiteResponse | None:
         try:
-            site_details = self.infra_api.get_site_details(site_id)
-            return site_details
+            return self.infra_api.get_site_details(site_id)
         except Exception as e:
             logging.error(f"Error fetching site details: {e}")
             return None
 
-    def get_device_details(self, device_id: str) -> DeviceResponse:
+    def get_device_details(self, device_id: str) -> Any | None:
         try:
-            device_details = self.infra_api.get_device_details(device_id)
-            return device_details
+            return self.infra_api.get_device_details(device_id)
         except Exception as e:
             logging.error(f"Error fetching device details: {e}")
             return None
 
-    def get_all_deployed_services(self, site_ids:list[str] = None) -> List[ServiceChainResponse]:
+    def get_all_deployed_services(self, site_ids: list[str] = None) -> List[ServiceChainResponse]:
         try:
-            services = self.services_api.get_all_deployed_services(site_ids=site_ids)
-            return services
+            return self.services_api.get_all_deployed_services(site_ids=site_ids)
         except Exception as e:
             logging.error(f"Error fetching all deployed services: {e}")
             return []
         
-    def get_deployed_service(self, service_id: str) -> ServiceChainResponse:
+    def get_deployed_service(self, service_id: str) -> ServiceChainResponse | None:
         try:
-            service = self.services_api.get_deployed_service(service_id)
-            return service
+            return self.services_api.get_deployed_service(service_id)
+
         except Exception as e:
             logging.error(f"Error fetching deployed service by ID: {e}")
             return None
 
-
-    def update_service(self, service_id: str, update_args: UpdateServiceChainArgs) -> ServiceChainResponse:
+    def update_service(self, service_id: str, update_args: UpdateServiceChainArgs) -> ServiceChainResponse | None:
         try:
-            service = self.services_api.update_service(service_id, update_args)
-            return service
+            return self.services_api.update_service(service_id, update_args)
         except Exception as e:
             logging.error(f"Error updating service: {e}")
             return None
 
-    def delete_service_chain_by_id(self, service_id: str) -> str:
+    def delete_service_chain_by_id(self, service_id: str) -> str | None:
         try:
-            response = self.services_api.delete_service_chain_by_id(service_id)
-            return response
+            return self.services_api.delete_service_chain_by_id(service_id)
         except Exception as e:
             logging.error(f"Error deleting service chain: {e}")
             return None
-        
+
+
 # Example usage:
 if __name__ == "__main__":
     nbi_client = NbiClient()
