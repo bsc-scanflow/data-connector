@@ -12,8 +12,9 @@ on:
   push:
     branches:
       - 'feat/reactive-migration-**'
-      - 'main'
-      - 'pipeline_integration'
+      #- 'main'
+      #- 'pipeline_integration'
+      - 'fix/**'
     paths:
       - examples/cloudedge-reactive-migration/**
       - tutorials/cloudedge-reactive-migration/**
