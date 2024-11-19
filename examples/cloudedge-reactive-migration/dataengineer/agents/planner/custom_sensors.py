@@ -8,9 +8,11 @@ from scanflow.agent.sensors.sensor import sensor
 import mlflow
 import json
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+
+logger = logging.getLogger("custom_sensor")
+logging.basicConfig(format='%(asctime)s - %(levelname)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
-logging.getLogger().setLevel(logging.INFO)
+logger.setLevel(logging.INFO)
 
 
 def tock():
@@ -39,16 +41,16 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             elapsed_time = time.time() - start_time
 
             # Wait for experiment parameters and metrics to be available
-            logging.info(f"Waiting for run metrics and params to be available...")
+            logger.info(f"Waiting for run metrics and params to be available...")
             while "max_cluster" not in latest_run.data.params and elapsed_time < timeout:
-                logging.debug(f"Run {latest_run.info.run_id} still hasn't logged the QoS values. Waiting...")
+                logger.debug(f"Run {latest_run.info.run_id} still hasn't logged the QoS values. Waiting...")
                 time.sleep(1)
                 elapsed_time = time.time() - start_time
                 # Retrieve again the latest run info from backend
                 latest_run = mlflow.get_run(run_id=latest_run.info.run_id)
 
             if elapsed_time > timeout:
-                logging.info("Current run still hasn't finished. Can't retrieve QoS values, exiting...")
+                logger.info("Current run still hasn't finished. Can't retrieve QoS values, exiting...")
                 return "No QoS values available"
 
             # Retrieve the available experiment metrics and parameters
@@ -61,8 +63,10 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
             if (max_cluster != "None" and max_qos >= 0) and qos_constraints(max_qos):
 
                 # Proceed to migrate the application
-                logging.info(
-                    f"Maximum QoS value {max_qos} found in Cluster ID {max_cluster} is above SLA. Executing application migration...")
+                logger.info(
+                    f"Maximum QoS value {max_qos} found in Cluster ID {max_cluster} "
+                    f"is above SLA. Executing application migration..."
+                )
 
                 migration_result = migrate_application(
                     app_name=kwargs["app_name"],
@@ -78,31 +82,34 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                     indent=2
                 )
             elif max_qos < 0:
-                migration_result = "No QoS values available! Either the application is not deployed or there are no dlpipelines running"
-                logging.info(migration_result)
+                migration_result = (
+                    "No QoS values available! Either the application is not deployed"
+                    "or there are no dlpipelines running"
+                )
+                logger.info(migration_result)
 
             else:
                 # Nothing to do
                 migration_result = "QoS below SLA. No migration required"
-                logging.info(migration_result)
+                logger.info(migration_result)
 
             # Mark the experiment as already analysed
             # TODO: check if set_experiment is enough to avoid active run vs environment run issues
-            logging.info(f"Experiment id: {latest_run.info.experiment_id}")
-            logging.info(f"Experiment run id: {latest_run.info.run_id}")
+            logger.info(f"Experiment id: {latest_run.info.experiment_id}")
+            logger.info(f"Experiment run id: {latest_run.info.run_id}")
 
             # Set latest experiment as the active one
             mlflow.set_experiment(experiment_id=latest_run.info.experiment_id)
 
-            logging.info(f"Run status: {latest_run.info.status}")
+            logger.info(f"Run status: {latest_run.info.status}")
 
             start_time = time.time()
             elapsed_time = time.time() - start_time
 
             run_status = mlflow_run_status.from_string(latest_run.info.status)
-            logging.info(f"Waiting for run {latest_run.info.run_id} to terminate...")
+            logger.info(f"Waiting for run {latest_run.info.run_id} to terminate...")
             while not mlflow_run_status.is_terminated(run_status) and (elapsed_time < timeout):
-                logging.debug(f"Run status is {latest_run.info.status}, waiting until run is terminated...")
+                logger.debug(f"Run status is {latest_run.info.status}, waiting until run is terminated...")
                 time.sleep(1)
                 elapsed_time = time.time() - start_time
                 # Retrieve again the latest run info from backend
@@ -110,10 +117,10 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                 run_status = mlflow_run_status.from_string(latest_run.info.status)
 
             if elapsed_time > timeout:
-                logging.info("Current run still hasn't finished. Can't log `analysed` parameter, exiting...")
+                logger.info("Current run still hasn't finished. Can't log `analysed` parameter, exiting...")
                 return "Latest run not finished"
 
-            logging.info(f"Setting experiment run {latest_run.info.run_id} as analysed...")
+            logger.info(f"Setting experiment run {latest_run.info.run_id} as analysed...")
             with mlflow.start_run(
                     run_id=latest_run.info.run_id,
                     experiment_id=latest_run.info.experiment_id
@@ -124,10 +131,10 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                 )
         else:
             # No new experiment runs available to analyse
-            logging.info("Last run already analysed. Skipping...")
+            logger.info("Last run already analysed. Skipping...")
             migration_result = "All runs already analysed"
     else:
-        logging.info("No available runs in experiment. Skipping...")
+        logger.info("No available runs in experiment. Skipping...")
         migration_result = "Experiment doesn't have runs"
 
     # TODO: Modify Sensor class so it allows logging data types other than str

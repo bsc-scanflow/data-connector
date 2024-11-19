@@ -12,9 +12,10 @@ from inno_nbi_api import ChartRepoIndexEntry
 from inno_nbi_api import BlockArgsDeploy
 from time import sleep
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+logger = logging.getLogger("custom_actuator")
+logging.basicConfig(format='%(asctime)s - %(levelname)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
-logging.getLogger().setLevel(logging.INFO)
+logger.setLevel(logging.INFO)
 
 
 # Actuator class
@@ -131,7 +132,7 @@ class NearbyOneActuator:
         )
 
         if not block_chart:
-            logging.error(
+            logger.error(
                 (
                     f"Block Chart {marketplace_chart.name} "
                     f"version {marketplace_chart.all_versions[0]} doesn't exist! Can't be deployed"
@@ -152,8 +153,8 @@ class NearbyOneActuator:
             values=override_values  # Override block chart values
         )
         # DEBUG
-        logging.info(f"For debugging purposes - Destination service BlockArgsDeploy:")
-        logging.info(f"{block_args.to_dict()}")
+        logger.info(f"For debugging purposes - Destination service BlockArgsDeploy:")
+        logger.info(f"{block_args.to_dict()}")
 
         # Compose the required DeployServiceChainArgs payload with the new service_name and the new dest_cluster
         dest_service_name = f"{app_name} - {site.display_name}"
@@ -176,11 +177,11 @@ class NearbyOneActuator:
             # Retrieve the service ID of the deployed service
             deployed_service_chain = self.nbi_client.get_deployed_service(service_id=response.strip('"')).service_chain
             deployed_status = self.nbi_client.OktoStatus[deployed_service_chain.status]
-            logging.info(f"Deployed service status: {deployed_status.name}")
+            logger.info(f"Deployed service status: {deployed_status.name}")
             match deployed_status:
                 case self.nbi_client.OktoStatus.OKTOSTATUS_ERROR:
                     # Delete the service and prepare o redeploy it in the next iteration
-                    logging.info("Error deploying service, retrying...")
+                    logger.info("Error deploying service, retrying...")
                     self.delete_service(service=deployed_service_chain)
                     response = None
                 case self.nbi_client.OktoStatus.OKTOSTATUS_IN_SYNC:
@@ -207,11 +208,11 @@ class NearbyOneActuator:
         # Steps:
         # - Update the available sites
         self.update_available_sites(description="Worker cluster")
-        logging.debug("Available sites updated")
+        logger.debug("Available sites updated")
 
         # - Retrieve the source Site
         source_site: Site = self.get_site(site_id=source_cluster_id)
-        logging.debug(f"Source site: {source_site.display_name} - {source_site.id}")
+        logger.debug(f"Source site: {source_site.display_name} - {source_site.id}")
 
         # - Find the service with the given source_service_name
         source_service_name: str = f"{app_name} - {source_site.display_name}"
@@ -221,9 +222,9 @@ class NearbyOneActuator:
         )
         
         if source_service:
-            logging.info(f"Source service {source_service.name} found!")
+            logger.info(f"Source service {source_service.name} found!")
         else:
-            logging.error(
+            logger.error(
                 (
                     f"Source service {source_service_name} not found! "
                     f"It might've been already migrated on previous checks"
@@ -237,13 +238,13 @@ class NearbyOneActuator:
         dest_site = self.get_next_site(source_site=source_site)
 
         # - Deploy the service_name using the DeployServiceChainArgs
-        logging.info("Migrating service...")
+        logger.info("Migrating service...")
         dest_service = self.deploy_service(site=dest_site, app_name=app_name)
         
-        logging.info(f"Deployed service: {dest_service}")
+        logger.info(f"Deployed service: {dest_service}")
 
         if not dest_service:
-            logging.error("Service couldn't be deployed!")
+            logger.error("Service couldn't be deployed!")
             return {
                 "message": "Service couldn't be deployed"
             }
@@ -264,7 +265,7 @@ class NearbyOneActuator:
             "deployed_service_name": dest_service.name,
         }
 
-        logging.debug(str(migration_result))
+        logger.debug(str(migration_result))
         return migration_result
 
     def __init__(self):
