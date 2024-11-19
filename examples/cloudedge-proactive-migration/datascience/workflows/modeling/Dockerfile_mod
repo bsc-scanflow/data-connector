@@ -1,0 +1,9 @@
+FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor
+# FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/cloudedge-datascience-flow-modeling
+
+COPY modeling modeling
+COPY load-data data
+
+RUN pip install --no-cache-dir -r modeling/PatchMixer/requirements.txt
+
+ENTRYPOINT ["python"]
