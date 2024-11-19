@@ -8,8 +8,8 @@ from scanflow.agent.sensors.sensor import sensor
 import mlflow
 import json
 
-logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
-                    datefmt='%d-%b-%y %H:%M:%S')
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 logging.getLogger().setLevel(logging.INFO)
 
 

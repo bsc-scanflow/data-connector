@@ -12,8 +12,8 @@ from inno_nbi_api import ChartRepoIndexEntry
 from inno_nbi_api import BlockArgsDeploy
 from time import sleep
 
-logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
-                    datefmt='%d-%b-%y %H:%M:%S')
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 logging.getLogger().setLevel(logging.INFO)
 
 
