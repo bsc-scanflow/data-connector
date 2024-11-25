@@ -59,8 +59,8 @@ class Exp_Main(Exp_Basic):
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
 
-    def _get_data(self, flag):
-        data_set, data_loader = data_provider(self.args, flag)
+    def _get_data(self, flag, setting=None):
+        data_set, data_loader = data_provider(self.args, flag, setting)
         return data_set, data_loader
 
     def _select_optimizer(self):
@@ -112,9 +112,6 @@ class Exp_Main(Exp_Basic):
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                         else:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                if self.args.inverse:
-                        print(f"inverse vali. Shape{outputs.shape}")
-                        outputs = vali_data.inverse_transform(outputs)
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
@@ -136,13 +133,13 @@ class Exp_Main(Exp_Basic):
     def train(self, setting):
         start_time = time.time()
 
-        train_data, train_loader = self._get_data(flag='train')
-        vali_data, vali_loader = self._get_data(flag='val')
-        test_data, test_loader = self._get_data(flag='test')
-
         path = os.path.join(self.args.checkpoints, setting)
         if not os.path.exists(path):
             os.makedirs(path)
+
+        train_data, train_loader = self._get_data(flag='train', setting=setting)
+        vali_data, vali_loader = self._get_data(flag='val', setting=setting)
+        test_data, test_loader = self._get_data(flag='test', setting=setting)
 
         time_now = time.time()
         epoch_time_sum = 0
@@ -171,6 +168,7 @@ class Exp_Main(Exp_Basic):
                 iter_count += 1
                 model_optim.zero_grad()
                 batch_x = batch_x.float().to(self.device)
+
                 batch_y = batch_y.float().to(self.device)
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
@@ -189,9 +187,7 @@ class Exp_Main(Exp_Basic):
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                             else:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                        if self.args.inverse:
-                            print(f"inverse train1. Shape{outputs.shape}")
-                            outputs = train_data.inverse_transform(outputs)
+
                         f_dim = -1 if self.args.features == 'MS' else 0
                         outputs = outputs[:, -self.args.pred_len:, f_dim:]
                         batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
@@ -213,9 +209,6 @@ class Exp_Main(Exp_Basic):
                         else:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
                     # print(outputs.shape,batch_y.shape)
-                    if self.args.inverse:
-                        print(f"inverse train2. Shape{outputs.shape}")
-                        outputs = train_data.inverse_transform(outputs)
                     f_dim = -1 if self.args.features == 'MS' else 0
                     outputs = outputs[:, -self.args.pred_len:, f_dim:]
                     batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
@@ -254,14 +247,6 @@ class Exp_Main(Exp_Basic):
             early_stopping(vali_loss, self.model, path)
             if early_stopping.early_stop:
                 print("Early stopping")
-                # result save
-                folder_path = './results/' + setting + '/'
-                if not os.path.exists(folder_path):
-                    os.makedirs(folder_path)
-                f = open("result.txt", 'a')
-                f.write('epoch_time_sum:{}, epoch:{}, epoch_time_avg:{}'.format(epoch_time_sum, epoch + 1,
-                                                                                   epoch_time_sum / (epoch + 1)))
-                f.write('\n')
                 break
 
             if self.args.lradj != 'TST':
@@ -291,10 +276,6 @@ class Exp_Main(Exp_Basic):
         batch_sum = len(test_data)
         preds = []
         trues = []
-        # inputx = []
-        folder_path = './test_results/' + setting + '/'
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
 
         self.model.eval()
         with torch.no_grad():
@@ -333,9 +314,7 @@ class Exp_Main(Exp_Basic):
 
                         else:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                if self.args.inverse:
-                    print(f"inverse test. Shape{outputs.shape}")
-                    outputs = test_data.inverse_transform(outputs)
+
                 f_dim = -1 if self.args.features == 'MS' else 0
                 # print(outputs.shape,batch_y.shape)
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
@@ -347,13 +326,7 @@ class Exp_Main(Exp_Basic):
 
                 preds.append(pred)
                 trues.append(true)
-                # inputx.append(batch_x.detach().cpu().numpy())
-                # if i % 20 == 0:
-                #     input = batch_x.detach().cpu().numpy()
-                #     gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
-                #     pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
-                #     visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
-
+                
         if self.args.test_flop:
             test_params_flop(self.model,(batch_x.shape[1], batch_x.shape[2]))
             exit()
@@ -375,22 +348,10 @@ class Exp_Main(Exp_Basic):
         np.save(folder_path+'pred.npy', preds)
         np.save(folder_path+'true.npy', trues)
         print('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
-        f = open("result.txt", 'a')
-        f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
-        # f.write('infer_time_sum:{}, batch_sum:{}, infer_per_second:{}'.format(infer_time_sum, batch_sum,infer_time_sum/batch_sum))
-        f.write('\n')
-        f.write('\n')
-        f.close()
-
-        # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe,rse, corr]))
-        # np.save(folder_path + 'pred.npy', preds)
-        # np.save(folder_path + 'true.npy', trues)
-        # np.save(folder_path + 'x.npy', inputx)
         return
 
     def predict(self, setting, load=False):
-        pred_data, pred_loader = self._get_data(flag='pred')
+        pred_data, pred_loader = self._get_data(flag='pred',setting=setting)
 
         if load:
             path = os.path.join(self.args.checkpoints, setting)
@@ -429,14 +390,13 @@ class Exp_Main(Exp_Basic):
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                         else:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                if self.args.inverse:
-                    print(f"inverse predict. Shape{outputs.shape}")
-                    outputs = pred_data.inverse_transform(outputs)
-                pred = outputs.detach().cpu().numpy()  # .squeeze()
+                f_dim = -1 if self.args.features == 'MS' else 0
+                outputs = outputs[:, -self.args.pred_len:, f_dim:]
+                pred = outputs.detach().cpu().numpy().squeeze() # .squeeze()
                 preds.append(pred)
 
         preds = np.array(preds)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
+        preds = preds.reshape(3)
 
         # result save
         folder_path = './results/' + setting + '/'

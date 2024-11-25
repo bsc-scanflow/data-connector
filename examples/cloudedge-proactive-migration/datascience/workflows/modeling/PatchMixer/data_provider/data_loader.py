@@ -7,6 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import OneHotEncoder
 from utils.timefeatures import time_features
 from utils.tools import StandardScaler
+import joblib
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -191,9 +192,9 @@ class Dataset_ETT_minute(Dataset):
 
 
 class Dataset_Custom(Dataset):
-    def __init__(self, root_path, flag='train', size=None,
+    def __init__(self, root_path, setting=None, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, inverse=False, timeenc=0, freq='h', categorical_cols=['node']):
+                 target='OT', scale=True, inverse=False, timeenc=0, freq='h', categorical_cols=['node'],checkpoints='./checkpoints/'):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -215,6 +216,8 @@ class Dataset_Custom(Dataset):
         self.inverse = inverse
         print(f"Inverse:{self.inverse}")
         self.categorical_cols = categorical_cols  # New parameter for categorical columns
+        self.checkpoints=checkpoints
+        self.setting=setting
         self.timeenc = timeenc
         self.freq = freq
 
@@ -255,6 +258,11 @@ class Dataset_Custom(Dataset):
             # Reorder columns
             final_columns = ['date'] + list(categorical_encoded_df.columns) + [col for col in df_raw.columns if col not in categorical_encoded_df.columns and col != 'date']
             df_raw = df_raw[final_columns]
+
+            if self.set_type==0:
+                # Saving the onehotencoder so we can fit it for inference
+                path = os.path.join(self.checkpoints, self.setting,"onehotencoder.pkl")
+                joblib.dump(self.encoder, path)
 
         if self.features=='M' or self.features=='MS':
             cols_data = df_raw.columns[1:]
@@ -344,9 +352,8 @@ class Dataset_Custom(Dataset):
     
 
 class Dataset_Pred(Dataset):
-    def __init__(self, root_path, flag='pred', size=None,
-                 features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, inverse=False, timeenc=0, freq='15min', cols=None):
+    def __init__(self, root_path, flag='pred', size=None, setting=None, features='S', data_path='ETTh1.csv',
+                 target='OT', scale=False, inverse=False, timeenc=0, freq='h', cols=None, categorical_cols=['node'], checkpoints='./checkpoints/'):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -364,6 +371,9 @@ class Dataset_Pred(Dataset):
         self.target = target
         self.scale = scale
         self.inverse = inverse
+        self.categorical_cols = categorical_cols  # New parameter for categorical columns
+        self.setting=setting
+        self.checkpoints=checkpoints
         self.timeenc = timeenc
         self.freq = freq
         self.cols = cols
@@ -389,15 +399,63 @@ class Dataset_Pred(Dataset):
         border1 = len(df_raw) - self.seq_len
         border2 = len(df_raw)
 
+        if self.categorical_cols:
+            path = os.path.join(self.checkpoints, self.setting,"onehotencoder.pkl")
+            self.encoder = joblib.load(path)
+            categorical_features = [col for col in cols if col in self.categorical_cols]
+            categorical_encoded = self.encoder.transform(df_raw[categorical_features].values)
+            categorical_encoded_df = pd.DataFrame(categorical_encoded, columns=self.encoder.get_feature_names_out(categorical_features))
+            # Get Raw dataset onehotencoded.
+            df_raw = pd.concat([df_raw.drop(categorical_features, axis=1), categorical_encoded_df], axis=1)
+            # Reorder columns
+            final_columns = ['date'] + list(categorical_encoded_df.columns) + [col for col in df_raw.columns if col not in categorical_encoded_df.columns and col != 'date']
+            df_raw = df_raw[final_columns]
+
         if self.features == 'M' or self.features == 'MS':
             cols_data = df_raw.columns[1:]
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
 
+        if self.categorical_cols:
+            non_categorical_columns = [col for col in cols_data if col not in categorical_encoded_df.columns]
+        else:
+            non_categorical_columns = cols_data
+
         if self.scale:
-            self.scaler.fit(df_data.values)
-            data = self.scaler.transform(df_data.values)
+            # Fit the scaler on the continuous features from the training data
+            train_data_continuous = df_data[non_categorical_columns][border1s[0]:border2s[0]]
+            self.scaler.fit(train_data_continuous.values)
+
+            # Transform the continuous features in the entire dataset
+            data_continuous = self.scaler.transform(df_data[non_categorical_columns].values)
+            print("Scaler fitted on shape:", train_data_continuous.values.shape)
+            print("Scaler mean:", self.scaler.mean)
+            print("Scaler std:", self.scaler.std)
+
+            # Create a DataFrame for the scaled continuous features
+            data_continuous_df = pd.DataFrame(
+                data_continuous,
+                columns=non_categorical_columns,
+                index=df_data.index
+            )
+
+            # If there are categorical features, combine the scaled continuous features with the categorical features
+            if self.categorical_cols:
+                # Select the one-hot encoded categorical features from df_data
+                data_categorical = df_data[categorical_encoded_df.columns]
+
+                # Concatenate the scaled continuous features and the categorical features
+                data = pd.concat([data_continuous_df, data_categorical], axis=1)
+            else:
+                # If there are no categorical features, use only the scaled continuous features
+                data = data_continuous_df
+
+            # Ensure the columns are in the same order as in df_data
+            data = data[df_data.columns]
+
+            # Convert the DataFrame back to a NumPy array if necessary
+            data = data.values
         else:
             data = df_data.values
 
@@ -425,6 +483,7 @@ class Dataset_Pred(Dataset):
         else:
             self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
+        print(self.data_x.shape)
 
     def __getitem__(self, index):
         s_begin = index

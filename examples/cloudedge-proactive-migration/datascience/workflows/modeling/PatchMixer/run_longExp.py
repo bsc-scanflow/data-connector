@@ -5,16 +5,6 @@ from exp.exp_main import Exp_Main
 import random
 import numpy as np
 
-#### Scanflow unique
-import mlflow
-import logging
-import sys
-sys.path.insert(0, '/scanflow/scanflow')
-from scanflow.client import ScanflowTrackerClient
-####
-
-
-
 parser = argparse.ArgumentParser(description='Autoformer & Transformer family for Time Series Forecasting')
 
 # random seed
@@ -129,62 +119,37 @@ if args.use_gpu and args.use_multi_gpu:
 print('Args in experiment:')
 print(args)
 
-client = ScanflowTrackerClient(verbose=True)
-mlflow.set_tracking_uri(client.get_tracker_uri(True))
-logging.info("Connecting tracking server uri: {}".format(mlflow.get_tracking_uri()))
-mlflow.set_experiment("PatchMixer Experiment")
-
 Exp = Exp_Main
 
 if args.is_training:
     for ii in range(args.itr):
         # setting record of experiments
-        with mlflow.start_run(run_name=f"PatchMixer_training") as run:
+        setting = 'loss_flag{}_lr{}_dm{}_{}_{}_{}_ft{}_sl{}_pl{}_p{}s{}_random{}_{}'.format(
+            args.loss_flag,
+            args.learning_rate,
+            args.d_model,
+            args.model_id,
+            args.model,
+            args.data,
+            args.features,
+            args.seq_len,
+            args.pred_len,
+            args.patch_len,
+            args.stride,
+            args.random_seed,ii)
 
-            setting = 'loss_flag{}_lr{}_dm{}_{}_{}_{}_ft{}_sl{}_pl{}_p{}s{}_random{}_{}'.format(
-                args.loss_flag,
-                args.learning_rate,
-                args.d_model,
-                args.model_id,
-                args.model,
-                args.data,
-                args.features,
-                args.seq_len,
-                args.pred_len,
-                args.patch_len,
-                args.stride,
-                args.random_seed,ii)
-            
-            mlflow.log_metric('loss_flag',args.loss_flag)
-            mlflow.log_metric('learning_rate',args.learning_rate)
-            mlflow.log_metric('d_model',args.d_model)
-            mlflow.log_metric('model_id',args.model_id)
-            mlflow.log_metric('model',args.model)
-            mlflow.log_metric('data',args.data)
-            mlflow.log_metric('features',args.features)
-            mlflow.log_metric('seq_len',args.seq_len)
-            mlflow.log_metric('pred_len',args.pred_len)
-            mlflow.log_metric('patch_len',args.patch_len)
-            mlflow.log_metric('stride',args.stride)
-            mlflow.log_metric('random_seed',args.random_seed)
+        exp = Exp(args)  # set experiments
+        print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
+        exp.train(setting)
 
-            exp = Exp(args)  # set experiments
-            print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
-            exp.train(setting)
+        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+        exp.test(setting)
 
-            print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-            exp.test(setting)
+        if args.do_predict:
+            print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+            exp.predict(setting, True)
 
-            if args.do_predict:
-                print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-                exp.predict(setting, True)
-
-            torch.cuda.empty_cache()
-
-            path=args.checkpoints+"/"+setting
-            mlflow.log_artifact(path+".pth", artifact_path="models")
-
-            mlflow.end_run()
+        torch.cuda.empty_cache()
 
 else:
     ii = 0
@@ -203,6 +168,6 @@ else:
         args.random_seed, ii)
 
     exp = Exp(args)  # set experiments
-    print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-    exp.test(setting, test=1)
+    print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+    exp.predict(setting, True)
     torch.cuda.empty_cache()
