@@ -24,10 +24,7 @@ patch_len=16
 stride=8
 random_seed=42
 
-# Compose model_path
-model_path="loss_flag_${loss_flag}_lr${learning_rate}_dm${d_model}_${model_id_name}_${data_name}_${features}_sl${seq_len}_pl${pred_len}_p${patch_len}s${stride}_random${random_seed}_0"
 # Construct parameters as a JSON string
-parameters="{\"enc_in\": ${enc_in}, \"checkpoints\": \"${checkpoints}\", \"loss_flag\": ${loss_flag}, \"learning_rate\": ${learning_rate}, \"d_model\": ${d_model}, \"model_id_name\": \"${model_id_name}\", \"data_name\": \"${data_name}\", \"features\": \"${features}\", \"seq_len\": ${seq_len}, \"pred_len\": ${pred_len}, \"patch_len\": ${patch_len}, \"stride\": ${stride}, \"random_seed\": ${random_seed}}"
 echo $parameters
 python -u ./modeling/PatchMixer/run_longExp.py \
   --random_seed $random_seed \
@@ -54,11 +51,15 @@ python -u ./modeling/PatchMixer/run_longExp.py \
   --patience 5\
   --loss_flag $loss_flag\
   --use_gpu False \
-  --itr 1 --batch_size 256 --learning_rate $learning_rate | tee logs/LongForecasting/$model_name'_'$model_id_name'_sl'$seq_len'_pl'$pred_len'_random_seed'$random_seed.log \
+  --itr 1 --batch_size 256 --learning_rate $learning_rate | tee logs/LongForecasting/$model_id_name'_'$model_id_name'_sl'$seq_len'_pl'$pred_len'_random_seed'$random_seed.log \
 
+
+
+# Compose model_path
+model_path="loss_flag_${loss_flag}_lr${learning_rate}_dm${d_model}_${model_id_name}_${data_name}_${features}_sl${seq_len}_pl${pred_len}_p${patch_len}s${stride}_random${random_seed}_0"
 
 python -u ./modeling/mlflow_loader.py \
   --experiment_name $model_id_name \
   --checkpoints $checkpoints \
-  --model_name $model_name \
+  --model_name $model_path \
   --parameters "$parameters" \

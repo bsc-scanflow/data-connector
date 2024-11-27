@@ -19,6 +19,15 @@ def modeling(experiment_name, checkpoints, model_name, parameters):
     client = ScanflowTrackerClient(verbose=True)
     mlflow.set_tracking_uri(client.get_tracker_uri(True))
     logging.info("Connecting tracking server uri: {}".format(mlflow.get_tracking_uri()))
+
+    # # Check if the experiment exists
+    # experiment = mlflow.get_experiment_by_name(experiment_name)
+    # if experiment is None:
+    #     # Create the experiment if it doesn't exist
+    #     experiment_id = mlflow.create_experiment(experiment_name)
+    # else:
+    #     # Retrieve the experiment ID if it exists
+    #     experiment_id = experiment.experiment_id
         
     mlflow.set_experiment(experiment_name)
     with mlflow.start_run():
@@ -35,18 +44,16 @@ def modeling(experiment_name, checkpoints, model_name, parameters):
         else:
             logging.error(f"Checkpoint directory {checkpoint_dir} does not exist or is not a directory.")
 
-        # Log model parameters
-        if parameters:
-            try:
-                params_dict = json.loads(parameters)
-                for key, value in params_dict.items():
-                    mlflow.log_param(key, value)
-            except json.JSONDecodeError:
-                logging.error("Failed to decode parameters. Ensure it's a valid JSON string.")
-        else:
-            logging.warning("No parameters provided to log.")
+        # Log parameters to MLFlow
+        try:
+            for key, value in parameters.items():
+                mlflow.log_param(key, value)
+        except Exception as e:
+            logging.error(f"Failed to log parameters to MLFlow: {e}")
+            
+                
 
 
 
-if __name__ == '__main__':
-    modeling()
+# if __name__ == '__main__':
+#     modeling()

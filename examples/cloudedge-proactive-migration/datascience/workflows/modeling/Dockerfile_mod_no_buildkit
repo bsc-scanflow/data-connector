@@ -4,8 +4,8 @@
 # - Python Docker SDK doesn't allow its client to create secrets if not using Docker Swarm
 # - It also doesn't use BuildKit yet but the old/deprecated build infrastructure: https://github.com/docker/docker-py/issues/2230
 # - More modern Dockerfiles can't be built
-# FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor AS release
-FROM proactive-modeling-patchmixer AS release
+FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor AS release
+# FROM proactive-modeling-patchmixer AS release
 # Install dependencies
 
 # Copy application code
@@ -16,5 +16,3 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir -r modeling/PatchMixer/requirements.txt
 
-
-ENTRYPOINT ["sh modeling/patchmixer_script.sh"]

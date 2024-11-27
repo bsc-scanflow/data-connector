@@ -98,6 +98,10 @@ parser.add_argument('--mixer_kernel_size', type=int, default=8, help='patchmixer
 # parser.add_argument('--a', type=int, default=1, help='degree of patches aggregation, limited to 1-N, other value for N')
 parser.add_argument('--loss_flag', type=int, default=2, help='loss function flag, 0 for MSE, 1 for MAE, 2 for both of MSE & MAE, 3 for SmoothL1loss')
 
+### MLFlow loader
+parser.add_argument('--mlflow_loader', action='store_true', default=False, help='Whether to load the trained model to MLFlow in Scanflow.')
+
+
 args = parser.parse_args()
 args.categorical_cols = args.categorical_cols.split(',')
 
@@ -171,3 +175,30 @@ else:
     print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
     exp.predict(setting, True)
     torch.cuda.empty_cache()
+
+if args.mlflow_loader:
+    model_path = (
+        f"loss_flag_{args.loss_flag}_lr{args.learning_rate}_dm{args.d_model}_"
+        f"{args.model_id}_{args.data}_{args.features}_sl{args.seq_len}_"
+        f"pl{args.pred_len}_p{args.patch_len}s{args.stride}_random{args.random_seed}_0"
+    )
+    print(model_path)
+    params_dict = {
+        "loss_flag": args.loss_flag,
+        "learning_rate": args.learning_rate,
+        "d_model": args.d_model,
+        "model_id": args.model_id,
+        "model": args.model,
+        "data": args.data,
+        "features": args.features,
+        "seq_len": args.seq_len,
+        "pred_len": args.pred_len,
+        "patch_len": args.patch_len,
+        "stride": args.stride,
+        "random_seed": args.random_seed,
+    }
+    from mlflow_loader import modeling
+    modeling(experiment_name=args.model_id,
+            checkpoints=args.checkpoints,
+            model_name=args.model_path, 
+            parameters=params_dict)
