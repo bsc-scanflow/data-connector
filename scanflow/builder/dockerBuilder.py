@@ -26,6 +26,15 @@ class DockerBuilder(builder.Builder):
                  network_mode: str = None):
         super(DockerBuilder, self).__init__(registry, network_mode)
         self.client = docker.from_env()
+        # Login to external registry if credentials are provided
+        # - TODO: improve credentials management
+        if env.get_env("DOCKER_REGISTRY_USERNAME"):
+            self.client.login(
+                registry = env.get_env("DOCKER_REGISTRY"),
+                username = env.get_env("DOCKER_REGISTRY_USERNAME"),
+                password = env.get_env("DOCKER_REGISTRY_PASSWORD")
+            )
+
 
     def build_ScanflowApplication(self, app: Application, trackerPort: int, image_pull_secret: str = None):
         self.paths = get_scanflow_paths(app.app_dir)
