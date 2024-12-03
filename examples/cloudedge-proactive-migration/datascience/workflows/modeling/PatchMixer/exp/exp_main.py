@@ -134,6 +134,7 @@ class Exp_Main(Exp_Basic):
         start_time = time.time()
 
         path = os.path.join(self.args.checkpoints, setting)
+        print(path)
         if not os.path.exists(path):
             os.makedirs(path)
 
@@ -263,6 +264,7 @@ class Exp_Main(Exp_Basic):
 
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
+        print(best_model_path)
 
         return self.model
 

@@ -26,7 +26,7 @@ parser.add_argument('--categorical_cols', type=str, default="node", help="Comma-
 parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
 parser.add_argument('--freq', type=str, default='h',
                     help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
-parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
+parser.add_argument('--checkpoints', type=str, default='/checkpoints/', help='location of model checkpoints')
 parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
 
 # forecasting task
@@ -99,8 +99,9 @@ parser.add_argument('--mixer_kernel_size', type=int, default=8, help='patchmixer
 parser.add_argument('--loss_flag', type=int, default=2, help='loss function flag, 0 for MSE, 1 for MAE, 2 for both of MSE & MAE, 3 for SmoothL1loss')
 
 ### MLFlow loader
-parser.add_argument('--mlflow_loader', action='store_true', default=False, help='Whether to load the trained model to MLFlow in Scanflow.')
+parser.add_argument('--mlflow_loader', type=bool, default=True, help='Whether to load the trained model to MLFlow in Scanflow.')
 
+print("Code for MLflow added")
 
 args = parser.parse_args()
 args.categorical_cols = args.categorical_cols.split(',')
@@ -178,8 +179,8 @@ else:
 
 if args.mlflow_loader:
     model_path = (
-        f"loss_flag_{args.loss_flag}_lr{args.learning_rate}_dm{args.d_model}_"
-        f"{args.model_id}_{args.data}_{args.features}_sl{args.seq_len}_"
+        f"loss_flag{args.loss_flag}_lr{args.learning_rate}_dm{args.d_model}_"
+        f"{args.model_id}_{args.model_id}_{args.data}_ft{args.features}_sl{args.seq_len}_"
         f"pl{args.pred_len}_p{args.patch_len}s{args.stride}_random{args.random_seed}_0"
     )
     print(model_path)
@@ -200,5 +201,5 @@ if args.mlflow_loader:
     from mlflow_loader import modeling
     modeling(experiment_name=args.model_id,
             checkpoints=args.checkpoints,
-            model_name=args.model_path, 
+            model_name=model_path, 
             parameters=params_dict)
