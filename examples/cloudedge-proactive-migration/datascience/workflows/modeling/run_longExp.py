@@ -106,6 +106,8 @@ parser.add_argument('--loss_flag', type=int, default=2, help='loss function flag
 parser.add_argument('--mlflow_loader', type=bool, default=True, help='Whether to use MLFlow functionalities in Scanflow.')
 parser.add_argument('--action', type=str, default="load", help='Whether to load the trained model to MLFlow or download the models.')
 parser.add_argument('--models_to_download', type=str, default=None, help="Comma-separated list of models to download.")
+parser.add_argument('--app_name', type=str, default=None, help=".")
+parser.add_argument('--team_name', type=str, default=None, help=".")
 
 args = parser.parse_args()
 args.categorical_cols = args.categorical_cols.split(',')
@@ -160,67 +162,19 @@ if args.is_training:
 
         torch.cuda.empty_cache()
 
-    if args.mlflow_loader:
-        model_path = (
-            f"loss_flag{args.loss_flag}_lr{args.learning_rate}_dm{args.d_model}_"
-            f"{args.model_id}_{args.model_id}_{args.data}_ft{args.features}_sl{args.seq_len}_"
-            f"pl{args.pred_len}_p{args.patch_len}s{args.stride}_random{args.random_seed}_0"
-        )
-        print(model_path)
-        params_dict = {
-            "loss_flag": args.loss_flag,
-            "learning_rate": args.learning_rate,
-            "d_model": args.d_model,
-            "model_id": args.model_id,
-            "model": args.model,
-            "data": args.data,
-            "features": args.features,
-            "seq_len": args.seq_len,
-            "pred_len": args.pred_len,
-            "patch_len": args.patch_len,
-            "stride": args.stride,
-            "random_seed": args.random_seed,
-        }
+    if args.mlflow_loader:        
         from PatchMixer.mlflow_connections import MLflowConnections
-        mlflow_conn=MLflowConnections(experiment_name=args.model_id,
-                checkpoints=args.checkpoints,
-                model_name=model_path, 
-                parameters=params_dict,
-                models_to_download=args.models_to_download)
-        mlflow_conn.execute(action=args.action)
+        mlflow_conn=MLflowConnections(args)
+        mlflow_conn.execute()
 
 
 
 else:
     
     if args.mlflow_loader:
-        model_path = (
-            f"loss_flag{args.loss_flag}_lr{args.learning_rate}_dm{args.d_model}_"
-            f"{args.model_id}_{args.model_id}_{args.data}_ft{args.features}_sl{args.seq_len}_"
-            f"pl{args.pred_len}_p{args.patch_len}s{args.stride}_random{args.random_seed}_0"
-        )
-        print(model_path)
-        params_dict = {
-            "loss_flag": args.loss_flag,
-            "learning_rate": args.learning_rate,
-            "d_model": args.d_model,
-            "model_id": args.model_id,
-            "model": args.model,
-            "data": args.data,
-            "features": args.features,
-            "seq_len": args.seq_len,
-            "pred_len": args.pred_len,
-            "patch_len": args.patch_len,
-            "stride": args.stride,
-            "random_seed": args.random_seed,
-        }
         from PatchMixer.mlflow_connections import MLflowConnections
-        mlflow_conn=MLflowConnections(experiment_name=args.model_id,
-                checkpoints=args.checkpoints,
-                model_name=model_path, 
-                parameters=params_dict,
-                models_to_download=args.models_to_download)
-        mlflow_conn.execute(action=args.action)
+        mlflow_conn=MLflowConnections(args)
+        mlflow_conn.execute()
 
     ii = 0
     setting = 'loss_flag{}_lr{}_dm{}_{}_{}_{}_ft{}_sl{}_pl{}_p{}s{}_random{}_{}'.format(
