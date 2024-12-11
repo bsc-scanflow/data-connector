@@ -111,6 +111,8 @@ parser.add_argument('--team_name', type=str, default=None, help=".")
 
 args = parser.parse_args()
 args.categorical_cols = args.categorical_cols.split(',')
+if args.models_to_download and isinstance(args.models_to_download, str):
+    args.models_to_download = [model.strip() for model in args.models_to_download.split(',')]
 
 # random seed
 fix_seed = args.random_seed

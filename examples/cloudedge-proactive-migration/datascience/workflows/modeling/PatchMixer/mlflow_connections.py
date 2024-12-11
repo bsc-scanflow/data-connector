@@ -5,6 +5,7 @@ import mlflow
 import mlflow.pytorch
 import mlflow.sklearn
 import torch
+import joblib
 from models import Informer, Autoformer, Transformer, DLinear, Linear, NLinear, PatchTST, PatchMixer
 from mlflow import MlflowClient
 sys.path.insert(0, '/scanflow/scanflow')
@@ -60,7 +61,7 @@ class MLflowConnections:
 
     def load(self):
         """
-        Log model and data preparation models to MLflow
+        Log model and data preparation models to MLflow. One mlflow run per model. Load the production models to DataEngineer Tracker.
         """
         if not self.experiment_name or not self.checkpoints or not self.model_name:
             logging.error("Missing required parameters for modeling")
@@ -68,21 +69,25 @@ class MLflowConnections:
 
         print(f"Start experiment: {self.experiment_name}")
         mlflow.set_experiment(experiment_name=self.experiment_name)
+        model_list=[]
         
-        with mlflow.start_run():
-            print("Starting MLflow run:")
-            
-            # Path to the directory containing model files
-            checkpoint_dir = os.path.join(os.getcwd(), self.checkpoints, self.model_name)
-
-            # Log each file in the directory
-            if os.path.exists(checkpoint_dir) and os.path.isdir(checkpoint_dir):
-                for root, dirs, files in os.walk(checkpoint_dir):
+        # Path to the directory containing model files
+        checkpoint_dir = os.path.join(os.getcwd(), self.checkpoints, self.model_name)
+        # We check if the directory exists
+        if os.path.exists(checkpoint_dir) and os.path.isdir(checkpoint_dir):
+            # Iterate through the directory
+            for root, dirs, files in os.walk(checkpoint_dir):
+                with mlflow.start_run():
+                    # Iterate through the multiple model files.
                     for file in files:
+
+                        # logging.info(f"Starting MLflow run to load {file}:")
                         file_path = os.path.join(root, file)
                         clean_model_name = os.path.splitext(file)[0]
-                        print(file)
+                        artifact_path=f"{self.model_name}/{clean_model_name}"
+                        model_list.append(artifact_path)
                         # Specific handling for .pth files (PyTorch models)
+                        # Innitialize model class
                         try:
                             if file.endswith('.pth'):  # PyTorch model
                                 model_dict = {
@@ -97,39 +102,40 @@ class MLflowConnections:
                                 }
                                 model = model_dict[self.args.model].Model(self.args)
                                 model.load_state_dict(torch.load(file_path))
-                                print(f"Saving model: {file_path} as {clean_model_name}.")
+                                logging.info(f"Saving model: {file_path} as {artifact_path}.")
                                 mlflow.pytorch.log_model(
                                     pytorch_model=model,
-                                    artifact_path=f"{self.model_name}/{clean_model_name}",
-                                    registered_model_name=clean_model_name
+                                    artifact_path=artifact_path,
+                                    registered_model_name=artifact_path
                                 )                                
                             elif file.endswith('.pkl'):  # Scikit-learn model
-                                print(f"Saving model: {file_path} as {clean_model_name}.")
+                                logging.info(f"Saving model: {file_path} as {artifact_path}.")
                                 # Log scikit-learn model
+                                sk_model = joblib.load(file_path)
                                 mlflow.sklearn.log_model(
-                                    sk_model=file_path,  # Path to the saved model
-                                    artifact_path=f"{self.model_name}/{clean_model_name}",
-                                    registered_model_name=clean_model_name
+                                    sk_model=sk_model,  # Actual model object
+                                    artifact_path=artifact_path,
+                                    registered_model_name=artifact_path
                                 )
-
-                            self.client.save_app_model(app_name=self.app_name,
-                                team_name= self.team_name,
-                                model_name=clean_model_name)
-                                
                         except Exception as e:
-                            logging.error(f"Failed to log model {file}: {e}")
-                        
+                            logging.error(f"Failed to log model {file}: {e}")     
+                    
+                    # Log parameters to MLFlow
+                    try:
+                        for key, value in self.parameters.items():
+                            print(f"Logging model parameter: {key} = {value}")
+                            mlflow.log_param(key, value)
+                    except Exception as e:
+                        logging.error(f"Failed to log parameters to MLFlow: {e}")                   
                         
             else:
                 logging.error(f"Checkpoint directory {checkpoint_dir} does not exist or is not a directory.")
             
-            # Log parameters to MLFlow
-            try:
-                for key, value in self.parameters.items():
-                    print(f"Logging model parameter: {key} = {value}")
-                    mlflow.log_param(key, value)
-            except Exception as e:
-                logging.error(f"Failed to log parameters to MLFlow: {e}")
+        for model in model_list:
+            # Retrieve the saved models from the registry. Upload them to the DataEngineer MLFlow tracker for prediction.  
+            self.client.save_app_model(app_name=self.app_name,
+                team_name= self.team_name,
+                model_name=model)
 
     def download(self):
         """
@@ -142,7 +148,7 @@ class MLflowConnections:
 
         # If no models found, log and return
         if not self.models_to_download:
-            logging.warning("No model directories found in the checkpoints path")
+            logging.warning("No model given to download.")
             return
 
         # Initialize MLflow client
@@ -155,35 +161,30 @@ class MLflowConnections:
         # Download each discovered model
         for model in self.models_to_download:
             try:
-                model_dir = os.path.join(self.checkpoints, self.model_name, model)
                 # Get model version
                 if self.model_version is not None:
-                    mv = mlflow_client.get_model_version(model_dir, self.model_version)
+                    mv = mlflow_client.get_model_version(model, self.model_version)
                 else:
                     # Get the latest production version
-                    versions = mlflow_client.get_latest_versions(model_dir, stages=["Production"])
+                    versions = mlflow_client.get_latest_versions(model)
                     mv = versions[0] if versions else None
 
                 # Skip if no model version found
                 if mv is None:
-                    logging.warning(f"No production version found for model {model_dir}")
+                    logging.warning(f"No production version found for model {model}")
                     continue
 
                 # Download artifacts
                 artifacts_dir = mlflow_client.download_artifacts(
                     mv.run_id,
-                    path=f"{model_dir}",
+                    path=f"{model}",
                     dst_path=download_dir
                 )
                 logging.info(f"Contents of download directory: {os.listdir(download_dir)}")
-                logging.info(f"Artifacts for {model_dir} downloaded in: {artifacts_dir}")
+                logging.info(f"Artifacts for {model} downloaded in: {artifacts_dir}")
 
             except Exception as e:
-                logging.error(f"Error downloading model {model_dir}: {e}")
-
-        # Log summary of downloaded models
-        logging.info(f"Total models downloaded: {len(self.models_to_download)}")
-        logging.info(f"Downloaded models: {self.models_to_download}")
+                logging.error(f"Error downloading model {model}: {e}")
 
     def execute(self):
         """
