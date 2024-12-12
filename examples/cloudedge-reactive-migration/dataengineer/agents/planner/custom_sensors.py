@@ -18,6 +18,39 @@ logger.setLevel(logging.INFO)
 def tock():
     print('Tock! The time is: %s' % time.strftime("'%Y-%m-%d %H:%M:%S'"))
 
+def improved_migration_algorythm(args, kwargs)-> None:
+    """
+    :param args
+    :param kwargs
+    :return None
+    """
+
+    # Initialize NearbyActuator
+
+    # Workaround - Hardcoded dict of available clusters
+    # - TODO: use NearbyActuator for this
+    sites_dict = {
+        "edge-id": "edge",
+        "cloud-id": "cloud"
+    }
+
+    # Filter QoS with currently running applications
+    running_services = []
+    # - For each registered cluster_id (params starting with "cluster_*") in Mlflow run --> latest_run.data.params:
+    #   - Search the service that starts with the given application name (i.e. "DLStreamer Pipeline Server ....")
+    #       - If found:
+    #           - Initialize a new object: {"cluster_id": str, "service": ServiceChain or whatever, "qos": float, "cluster_type": str}
+    #           - Save the Service (it might be deleted once the new one has been properly deployed) --> "service"
+    #           - Store its QoS and cluster_id
+    #               - Parse the "cluster_X" param name, get the index and use it to retrieve the "qos_X" metric from Mlflow --> latest_run.data.metrics["qos_X"] --> "qos"
+    #           - Set 'edge/cloud' label based on the sites_dict --> "cluster_type"
+    #           - Append the object to the running_services list
+    #       - Else:
+    #           - Skip this entry
+
+    # Go through the previous list of running services and apply the migration rules
+
+    pass
 
 # TODO: parameterize the node names (use app_name for this and team_name for the run names)
 @sensor(nodes=["cloudedge-migration-experiment-ci"])
