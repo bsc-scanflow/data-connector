@@ -50,11 +50,11 @@ def improved_migration_algorythm(latest_run: mlflow.entities.Run, kwargs)-> str:
     cluster_dict = { name:id for (name, id) in latest_run.data.params.items() if name.startswith("cluster_") }
     qos_dict = { name:value for (name, value) in latest_run.data.metrics.items() if name.startswith("qos_") }
 
-
-    migration_results = {}
+    # Initialize a list of running services
+    running_services = []
 
     for cluster_name, cluster_id in cluster_dict.items():
-        # - Search the service that starts with the given application name (i.e. "DLStreamer Pipeline Server ....")
+        # - Search the service with the expected application name
         source_site: Site = nearby_actuator.get_site(site_id=cluster_id)
         source_service_name: str = f"{kwargs['app_name']} - {source_site.display_name}"
         source_service: ServiceChainResponseServiceChain = nearby_actuator.get_service(
@@ -64,33 +64,42 @@ def improved_migration_algorythm(latest_run: mlflow.entities.Run, kwargs)-> str:
         # - If found:
         if source_service:
             logger.info(f"Source service {source_service.name} found!")
-
-            # Retrieve its QoS and verify migration rules
-            # TODO: apply regex instead of split
-            idx = cluster_name.split("_")[1]
-            qos = qos_dict[f"qos_{idx}"]
+            # Initialize an object with all the required information
             # TODO: use NearbyOne API to properly detect the cluster type from Site information (name, description, etc...)
-            cluster_type = sites_dict[cluster_id] if cluster_id in sites_dict else None
+            service_dict = {
+                "service": source_service,
+                "site": source_site,
+                "qos": qos_dict[f"qos_{cluster_name.split('_')[1]}"],
+                "cluster_type": sites_dict[cluster_id] if cluster_id in sites_dict else None
+            }
+            # Append the object to the list
+            running_services.append(service_dict)
 
-            if qos_check(qos=qos, cluster_type=cluster_type):
-                logger.info(f"Service {source_service.name} running on {cluster_type} with Qos {qos} requires migration.")
-                # Migrate the application
-                # TODO: don't use the current NearbyOneActuator.migrate_service() method as it duplicates already done job, like looking for the source site and service name                
-                migration_result = nearby_actuator.migrate_service(app_name=kwargs['app_name'], source_cluster_id=source_site.id)
-            else:
-                # - Skip this entry
-                logger.info(f"Service {source_service.name} running on {cluster_type} with Qos {qos} doesn't require migration.")
-                migration_result = f"Service {source_service.name} running on {cluster_type} with Qos {qos} doesn't require migration."
+    # Initialize a dictionary with migration results
+    migration_results = {}
+
+    # Go through all the currently running service and check if they have to be migrated
+    for service in running_services:
+
+        logger.info(f"Source service {service["service"].name} found!")
+
+        # Verify QoS migration rules
+        qos = service["qos"]
+        cluster_type = service["cluster_type"]
+        source_service = service["service"]
+        source_site = service["site"]
+
+        if qos_check(qos=qos, cluster_type=cluster_type):
+            logger.info(f"Service {source_service.name} running on {cluster_type} with Qos {qos} requires migration.")
+            # Migrate the application
+            # TODO: don't use the current NearbyOneActuator.migrate_service() method as it duplicates already done job, like looking for the source site and service name                
+            migration_result = nearby_actuator.migrate_service(app_name=kwargs['app_name'], source_cluster_id=source_site.id)
         else:
-            logger.error(
-                (
-                    f"Source service {source_service_name} not found! "
-                    f"It might've been already migrated on previous checks"
-                )
-            )
-            migration_result = f"Service {source_service_name} already migrated in previous executions"
+            # - Skip this entry
+            logger.info(f"Service {source_service.name} running on {cluster_type} with Qos {qos} doesn't require migration.")
+            migration_result = f"Service {source_service.name} running on {cluster_type} with Qos {qos} doesn't require migration."
 
-        migration_results[source_service_name] = migration_result
+        migration_results[source_service.name] = migration_result
     
     # Return all migration results as a string
     return json.dumps(
