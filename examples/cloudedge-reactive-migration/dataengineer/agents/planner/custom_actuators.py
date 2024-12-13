@@ -242,7 +242,7 @@ class NearbyOneActuator:
         logger.info("Migrating service...")
         dest_service = self.deploy_service(site=dest_site, app_name=app_name)
         
-        logger.info(f"Deployed service: {dest_service}")
+        #logger.info(f"Deployed service: {dest_service}")
 
         if not dest_service:
             logger.error("Service couldn't be deployed!")
