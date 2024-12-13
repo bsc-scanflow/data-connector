@@ -81,8 +81,6 @@ def improved_migration_algorythm(latest_run: mlflow.entities.Run, kwargs)-> str:
     # Go through all the currently running service and check if they have to be migrated
     for service in running_services:
 
-        logger.info(f"Source service {service["service"].name} found!")
-
         # Verify QoS migration rules
         qos = service["qos"]
         cluster_type = service["cluster_type"]
