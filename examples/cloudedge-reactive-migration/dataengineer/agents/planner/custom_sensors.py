@@ -18,7 +18,8 @@ logger.setLevel(logging.INFO)
 def tock():
     print('Tock! The time is: %s' % time.strftime("'%Y-%m-%d %H:%M:%S'"))
 
-def improved_migration_algorythm(args, kwargs)-> None:
+
+def improved_migration_algorythm(latest_run: mlflow.entities.Run, args, kwargs)-> str:
     """
     :param args
     :param kwargs
@@ -26,34 +27,130 @@ def improved_migration_algorythm(args, kwargs)-> None:
     """
 
     # Initialize NearbyActuator
+    # - Initialize environment variables required for KratosClient
+    os.environ["NBY_ENV_EMAIL"] = kwargs["nearbyone_env_email"]
+    os.environ["NBY_ENV_PASSWORD"] = kwargs["nearbyone_env_password"]
+    os.environ["NBY_ORGANIZATION_ID"] = kwargs["nearbyone_organization_id"]
+    os.environ["NBY_ENV_NAME"] = kwargs["nearbyone_env_name"]
+
+    # - Initialize a NearbyOneActuator
+    nearby_actuator = NearbyOneActuator(
+    )
 
     # Workaround - Hardcoded dict of available clusters
-    # - TODO: use NearbyActuator for this
+    nearby_actuator.update_available_sites(description="Worker cluster")
+    
+    # - TODO: use NearbyOneActuator for this
     sites_dict = {
-        "edge-id": "edge",
-        "cloud-id": "cloud"
+        "eb0e3eaa-b668-4ad6-bc10-2bb0eb7da259": "edge",
+        "fd7816db-7948-4602-af7a-1d51900792a7": "cloud"
     }
 
-    # Filter QoS with currently running applications
-    running_services = []
     # - For each registered cluster_id (params starting with "cluster_*") in Mlflow run --> latest_run.data.params:
-    #   - Search the service that starts with the given application name (i.e. "DLStreamer Pipeline Server ....")
-    #       - If found:
-    #           - Initialize a new object: {"cluster_id": str, "service": ServiceChain or whatever, "qos": float, "cluster_type": str}
-    #           - Save the Service (it might be deleted once the new one has been properly deployed) --> "service"
-    #           - Store its QoS and cluster_id
-    #               - Parse the "cluster_X" param name, get the index and use it to retrieve the "qos_X" metric from Mlflow --> latest_run.data.metrics["qos_X"] --> "qos"
-    #           - Set 'edge/cloud' label based on the sites_dict --> "cluster_type"
-    #           - Append the object to the running_services list
-    #       - Else:
-    #           - Skip this entry
+    cluster_dict = { name:id for (name, id) in latest_run.data.params.items() if name.startswith("cluster_") }
+    qos_dict = { name:value for (name, value) in latest_run.data.metrics.items() if name.startswith("qos_") }
 
-    # Go through the previous list of running services and apply the migration rules
 
-    pass
+    migration_results = {}
+
+    for cluster_name, cluster_id in cluster_dict.items():
+        # - Search the service that starts with the given application name (i.e. "DLStreamer Pipeline Server ....")
+        source_site: Site = nearby_actuator.get_site(site_id=cluster_id)
+        source_service_name: str = f"{kwargs['app_name']} - {source_site.display_name}"
+        source_service: ServiceChainResponseServiceChain = nearby_actuator.get_service(
+            site=source_site,
+            service_name=source_service_name
+        )
+        # - If found:
+        if source_service:
+            logger.info(f"Source service {source_service.name} found!")
+
+            # Retrieve its QoS and verify migration rules
+            # TODO: apply regex instead of split
+            idx = cluster_name.split("_")[1]
+            qos = qos_dict[f"qos_{idx}"]
+            # TODO: use NearbyOne API to properly detect the cluster type from Site information (name, description, etc...)
+            cluster_type = sites_dict[cluster_id] if cluster_id in sites_dict else None
+
+            if qos_check(qos=qos, cluster_type=cluster_type):
+                logger.info(f"Service {source_service.name} running on {cluster_type} with Qos {qos} requires migration.")
+                # Migrate the application
+                # TODO: don't use the current NearbyOneActuator.migrate_service() method as it duplicates already done job, like looking for the source site and service                
+                migration_result = nearby_actuator.migrate_service(app_name=source_service_name, source_cluster_id=source_site.id)
+            else:
+                # - Skip this entry
+                logger.info(f"Service {source_service.name} running on {cluster_type} with Qos {qos} doesn't require migration.")
+                migration_result = f"Service {source_service.name} running on {cluster_type} with Qos {qos} doesn't require migration."
+        else:
+            logger.error(
+                (
+                    f"Source service {source_service_name} not found! "
+                    f"It might've been already migrated on previous checks"
+                )
+            )
+            migration_result = f"Service {source_service_name} already migrated in previous executions"
+
+        migration_results[source_service_name] = migration_result
+    
+    # Return all migration results as a string
+    return json.dumps(
+            obj=migration_results,
+            indent=2
+        )
+
+
+def initial_migration_algorythm(latest_run: mlflow.entities.Run, args, kwargs)-> str:
+    """
+    Algorythm that just analyses the max QoS value, regardless of whether the application is still running on that cluster or not
+    :param latest_run
+    :return migration results dictionary
+    """
+
+    # Retrieve the available experiment metrics and parameters
+    max_cluster = latest_run.data.params["max_cluster"]
+    max_qos = latest_run.data.metrics["max_qos"]
+    # Index not required as of now
+    # max_idx = latest_run.data.metrics["max_idx"]
+
+    # Check if there's a max_cluster ID value, or it is set to None
+    if (max_cluster != "None" and max_qos >= 0) and qos_constraints(max_qos):
+
+        # Proceed to migrate the application
+        logger.info(
+            f"Maximum QoS value {max_qos} found in Cluster ID {max_cluster} "
+            f"is above SLA. Executing application migration..."
+        )
+
+        migration_result = migrate_application(
+            app_name=kwargs["app_name"],
+            current_cluster_id=max_cluster,
+            nearbyone_env_name=kwargs["nearbyone_env_name"],
+            nearbyone_org_id=kwargs["nearbyone_organization_id"],
+            nearbyone_email=kwargs["nearbyone_env_email"],
+            nearbyone_password=kwargs["nearbyone_env_password"]
+        )
+        # Workaround: Sensor return value is expected to be str
+        migration_result = json.dumps(
+            obj=migration_result,
+            indent=2
+        )
+    elif max_qos < 0:
+        migration_result = (
+            "No QoS values available! Either the application is not deployed"
+            "or there are no dlpipelines running"
+        )
+        logger.info(migration_result)
+
+    else:
+        # Nothing to do
+        migration_result = "QoS below SLA. No migration required"
+        logger.info(migration_result)
+
+    return migration_result
+
 
 # TODO: parameterize the node names (use app_name for this and team_name for the run names)
-@sensor(nodes=["cloudedge-migration-experiment-ci"])
+#@sensor(nodes=["cloudedge-migration-experiment-ci"])
 async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
     print(args)
     print(kwargs)
@@ -86,45 +183,11 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
                 logger.info("Current run still hasn't finished. Can't retrieve QoS values, exiting...")
                 return "No QoS values available"
 
-            # Retrieve the available experiment metrics and parameters
-            max_cluster = latest_run.data.params["max_cluster"]
-            max_qos = latest_run.data.metrics["max_qos"]
-            # Index not required as of now
-            # max_idx = latest_run.data.metrics["max_idx"]
+            # - Initial reactive migration algorythm
+            #migration_result = initial_migration_algorythm(latest_run, kwargs=kwargs)
 
-            # Check if there's a max_cluster ID value, or it is set to None
-            if (max_cluster != "None" and max_qos >= 0) and qos_constraints(max_qos):
-
-                # Proceed to migrate the application
-                logger.info(
-                    f"Maximum QoS value {max_qos} found in Cluster ID {max_cluster} "
-                    f"is above SLA. Executing application migration..."
-                )
-
-                migration_result = migrate_application(
-                    app_name=kwargs["app_name"],
-                    current_cluster_id=max_cluster,
-                    nearbyone_env_name=kwargs["nearbyone_env_name"],
-                    nearbyone_org_id=kwargs["nearbyone_organization_id"],
-                    nearbyone_email=kwargs["nearbyone_env_email"],
-                    nearbyone_password=kwargs["nearbyone_env_password"]
-                )
-                # Workaround: Sensor return value is expected to be str
-                migration_result = json.dumps(
-                    obj=migration_result,
-                    indent=2
-                )
-            elif max_qos < 0:
-                migration_result = (
-                    "No QoS values available! Either the application is not deployed"
-                    "or there are no dlpipelines running"
-                )
-                logger.info(migration_result)
-
-            else:
-                # Nothing to do
-                migration_result = "QoS below SLA. No migration required"
-                logger.info(migration_result)
+            # - Improved reactive migration algorythm
+            migration_result = improved_migration_algorythm(latest_run=latest_run, kwargs=kwargs)
 
             # Mark the experiment as already analysed
             # TODO: check if set_experiment is enough to avoid active run vs environment run issues

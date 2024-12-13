@@ -87,6 +87,7 @@ class NearbyOneActuator:
         """
 
         for service in self.get_all_services(site=site):
+            # TODO: Use regex for more flexibility?
             if service_name == service.name:
                 return service
 
