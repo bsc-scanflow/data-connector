@@ -150,7 +150,7 @@ def initial_migration_algorythm(latest_run: mlflow.entities.Run, args, kwargs)->
 
 
 # TODO: parameterize the node names (use app_name for this and team_name for the run names)
-#@sensor(nodes=["cloudedge-migration-experiment-ci"])
+@sensor(nodes=["cloudedge-migration-experiment-ci"])
 async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
     print(args)
     print(kwargs)
