@@ -19,7 +19,7 @@ def tock():
     print('Tock! The time is: %s' % time.strftime("'%Y-%m-%d %H:%M:%S'"))
 
 
-def improved_migration_algorythm(latest_run: mlflow.entities.Run, args, kwargs)-> str:
+def improved_migration_algorythm(latest_run: mlflow.entities.Run, kwargs)-> str:
     """
     :param args
     :param kwargs
@@ -99,7 +99,7 @@ def improved_migration_algorythm(latest_run: mlflow.entities.Run, args, kwargs)-
         )
 
 
-def initial_migration_algorythm(latest_run: mlflow.entities.Run, args, kwargs)-> str:
+def initial_migration_algorythm(latest_run: mlflow.entities.Run, kwargs)-> str:
     """
     Algorythm that just analyses the max QoS value, regardless of whether the application is still running on that cluster or not
     :param latest_run
