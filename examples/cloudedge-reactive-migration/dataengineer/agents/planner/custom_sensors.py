@@ -75,8 +75,8 @@ def improved_migration_algorythm(latest_run: mlflow.entities.Run, kwargs)-> str:
             if qos_check(qos=qos, cluster_type=cluster_type):
                 logger.info(f"Service {source_service.name} running on {cluster_type} with Qos {qos} requires migration.")
                 # Migrate the application
-                # TODO: don't use the current NearbyOneActuator.migrate_service() method as it duplicates already done job, like looking for the source site and service                
-                migration_result = nearby_actuator.migrate_service(app_name=source_service_name, source_cluster_id=source_site.id)
+                # TODO: don't use the current NearbyOneActuator.migrate_service() method as it duplicates already done job, like looking for the source site and service name                
+                migration_result = nearby_actuator.migrate_service(app_name=kwargs['app_name'], source_cluster_id=source_site.id)
             else:
                 # - Skip this entry
                 logger.info(f"Service {source_service.name} running on {cluster_type} with Qos {qos} doesn't require migration.")
