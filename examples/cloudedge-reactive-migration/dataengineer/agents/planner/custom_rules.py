@@ -15,7 +15,7 @@ def qos_check(qos: float, cluster_type: str) -> bool:
         case "edge":
             return qos > 0.2
         case "cloud":
-            return qos < 0.05
+            return qos < 0.03
         case _:
             # In case the cluster type is unknown, play it safe and don't trigger the migration
             return False
