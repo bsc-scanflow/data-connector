@@ -54,26 +54,28 @@ def improved_migration_algorythm(latest_run: mlflow.entities.Run, kwargs)-> str:
     running_services = []
 
     for cluster_name, cluster_id in cluster_dict.items():
-        # - Search the service with the expected application name
+        # Check if cluster_id is one of the available Worker sites
         source_site: Site = nearby_actuator.get_site(site_id=cluster_id)
-        source_service_name: str = f"{kwargs['app_name']} - {source_site.display_name}"
-        source_service: ServiceChainResponseServiceChain = nearby_actuator.get_service(
-            site=source_site,
-            service_name=source_service_name
-        )
-        # - If found:
-        if source_service:
-            logger.info(f"Source service {source_service.name} found!")
-            # Initialize an object with all the required information
-            # TODO: use NearbyOne API to properly detect the cluster type from Site information (name, description, etc...)
-            service_dict = {
-                "service": source_service,
-                "site": source_site,
-                "qos": qos_dict[f"qos_{cluster_name.split('_')[1]}"],
-                "cluster_type": sites_dict[cluster_id] if cluster_id in sites_dict else None
-            }
-            # Append the object to the list
-            running_services.append(service_dict)
+        if source_site:
+            # - Search the service with the expected application name
+            source_service_name: str = f"{kwargs['app_name']} - {source_site.display_name}"
+            source_service: ServiceChainResponseServiceChain = nearby_actuator.get_service(
+                site=source_site,
+                service_name=source_service_name
+            )
+            # - If found:
+            if source_service:
+                logger.info(f"Source service {source_service.name} found!")
+                # Initialize an object with all the required information
+                # TODO: use NearbyOne API to properly detect the cluster type from Site information (name, description, etc...)
+                service_dict = {
+                    "service": source_service,
+                    "site": source_site,
+                    "qos": qos_dict[f"qos_{cluster_name.split('_')[1]}"],
+                    "cluster_type": sites_dict[cluster_id] if cluster_id in sites_dict else None
+                }
+                # Append the object to the list
+                running_services.append(service_dict)
 
     # Initialize a dictionary with migration results
     migration_results = {}
