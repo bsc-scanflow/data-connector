@@ -198,8 +198,7 @@ class MLflowConnections:
         # Download each discovered model
         for model in self.models_to_download:
             # Get the latest production version
-            versions = mlflow_client.get_latest_versions(model)
-            mv = versions[0] if versions else None
+            mv = mlflow_client.get_latest_versions(model)
             # Skip if no model version found
             if mv is None:
                 logging.warning(f"No production version found for model {model}")

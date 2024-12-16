@@ -9,10 +9,6 @@ FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-re
 # Install dependencies
 
 # Copy application code
-COPY data-retrieval /data-retrieval
+COPY data-retrieval data-retrieval
 
 WORKDIR /app
-
-
-
-ENTRYPOINT ["python", "/app/qos-upload/qos-upload.py"]
