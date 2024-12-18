@@ -59,8 +59,8 @@ class Exp_Main(Exp_Basic):
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
 
-    def _get_data(self, flag, setting=None):
-        data_set, data_loader = data_provider(self.args, flag, setting)
+    def _get_data(self, flag, setting=None, encoder=None):
+        data_set, data_loader = data_provider(self.args, flag, setting, encoder)
         return data_set, data_loader
 
     def _select_optimizer(self):
@@ -352,13 +352,38 @@ class Exp_Main(Exp_Basic):
         print('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
         return
 
-    def predict(self, setting, load=False):
-        pred_data, pred_loader = self._get_data(flag='pred',setting=setting)
+    def predict(self, setting, mlflow_load=True, load=False, model_encoder_uri=None, model_prediction_uri=None, experiment_name=None):
 
         if load:
             path = os.path.join(self.args.checkpoints, setting)
             best_model_path = path + '/' + 'checkpoint.pth'
             self.model.load_state_dict(torch.load(best_model_path))
+
+        if mlflow_load:
+            import mlflow
+            import mlflow.pytorch
+            import mlflow.sklearn
+            import joblib
+            import sys
+            import logging
+            sys.path.insert(0, '/scanflow/scanflow')
+            from scanflow.client import ScanflowTrackerClient
+            client = ScanflowTrackerClient(verbose=True)
+            mlflow_uri = client.get_tracker_uri(True)
+            mlflow.set_tracking_uri(mlflow_uri)
+            logging.info(f"Connecting tracking server uri: {mlflow.get_tracking_uri()}")
+            mlflow.set_experiment(experiment_name)
+            logging.info(f"Starting experiment: {experiment_name}")
+
+            encoder = mlflow.sklearn.load_model(model_encoder_uri)
+            logging.info(f"onehotencoder loaded: {encoder}")
+            loaded_model = mlflow.pytorch.load_model(model_prediction_uri)
+            self.model.load_state_dict(loaded_model.state_dict())
+            logging.info(f"PatchMixer model loaded: {self.model}")
+
+
+
+        pred_data, pred_loader = self._get_data(flag='pred',setting=setting, encoder=encoder)
 
         preds = []
 
@@ -401,10 +426,10 @@ class Exp_Main(Exp_Basic):
         preds = preds.reshape(3)
 
         # result save
-        folder_path = './results/' + setting + '/'
+        folder_path = '/workflow/results/' 
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
         np.save(folder_path + 'real_prediction.npy', preds)
 
-        return
+        return preds

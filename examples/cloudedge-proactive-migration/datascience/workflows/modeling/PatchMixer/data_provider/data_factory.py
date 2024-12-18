@@ -10,7 +10,7 @@ data_dict = {
 }
 
 
-def data_provider(args, flag, setting=None):
+def data_provider(args, flag, setting=None, encoder=None):
     Data = data_dict[args.data]
     timeenc = 0 if args.embed != 'timeF' else 1
 
@@ -44,7 +44,8 @@ def data_provider(args, flag, setting=None):
         categorical_cols=args.categorical_cols,
         checkpoints=args.checkpoints,
         setting=setting,
-        scale=False
+        scale=False,
+        encoder= encoder
     )
     print(flag, len(data_set))
     data_loader = DataLoader(

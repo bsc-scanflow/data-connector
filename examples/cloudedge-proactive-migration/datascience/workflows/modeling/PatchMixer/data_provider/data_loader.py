@@ -194,7 +194,7 @@ class Dataset_ETT_minute(Dataset):
 class Dataset_Custom(Dataset):
     def __init__(self, root_path, setting=None, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, inverse=False, timeenc=0, freq='h', categorical_cols=['node'],checkpoints='./checkpoints/'):
+                 target='OT', scale=True, inverse=False, timeenc=0, freq='h', categorical_cols=['node'],checkpoints='./checkpoints/', encoder=None):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -353,7 +353,7 @@ class Dataset_Custom(Dataset):
 
 class Dataset_Pred(Dataset):
     def __init__(self, root_path, flag='pred', size=None, setting=None, features='S', data_path='ETTh1.csv',
-                 target='OT', scale=False, inverse=False, timeenc=0, freq='h', cols=None, categorical_cols=['node'], checkpoints='./checkpoints/'):
+                 target='OT', scale=False, inverse=False, timeenc=0, freq='h', cols=None, categorical_cols=['node'], checkpoints='./checkpoints/', encoder=None):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -379,6 +379,7 @@ class Dataset_Pred(Dataset):
         self.cols = cols
         self.root_path = root_path
         self.data_path = data_path
+        self.encoder=encoder
         self.__read_data__()
 
     def __read_data__(self):
@@ -400,8 +401,9 @@ class Dataset_Pred(Dataset):
         border2 = len(df_raw)
 
         if self.categorical_cols:
-            path = os.path.join(self.checkpoints, self.setting,"onehotencoder.pkl")
-            self.encoder = joblib.load(path)
+            if self.encoder is None:
+                path = os.path.join(self.checkpoints, self.setting,"onehotencoder.pkl")
+                self.encoder = joblib.load(path)    
             categorical_features = [col for col in cols if col in self.categorical_cols]
             categorical_encoded = self.encoder.transform(df_raw[categorical_features].values)
             categorical_encoded_df = pd.DataFrame(categorical_encoded, columns=self.encoder.get_feature_names_out(categorical_features))
