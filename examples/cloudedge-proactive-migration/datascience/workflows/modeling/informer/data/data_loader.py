@@ -1,0 +1,497 @@
+import os
+import numpy as np
+import pandas as pd
+
+import torch
+from torch.utils.data import Dataset, DataLoader
+# from sklearn.preprocessing import StandardScaler
+
+from utils.tools import StandardScaler
+from utils.timefeatures import time_features
+from sklearn.preprocessing import OneHotEncoder
+import joblib
+
+import warnings
+warnings.filterwarnings('ignore')
+
+class Dataset_ETT_hour(Dataset):
+    def __init__(self, root_path, flag='train', size=None, 
+                 features='S', data_path='ETTh1.csv', 
+                 target='OT', scale=True, inverse=False, timeenc=0, freq='h', cols=None):
+        # size [seq_len, label_len, pred_len]
+        # info
+        if size == None:
+            self.seq_len = 24*4*4
+            self.label_len = 24*4
+            self.pred_len = 24*4
+        else:
+            self.seq_len = size[0]
+            self.label_len = size[1]
+            self.pred_len = size[2]
+        # init
+        assert flag in ['train', 'test', 'val']
+        type_map = {'train':0, 'val':1, 'test':2}
+        self.set_type = type_map[flag]
+        
+        self.features = features
+        self.target = target
+        self.scale = scale
+        self.inverse = inverse
+        self.timeenc = timeenc
+        self.freq = freq
+        
+        self.root_path = root_path
+        self.data_path = data_path
+        self.__read_data__()
+
+    def __read_data__(self):
+        self.scaler = StandardScaler()
+        df_raw = pd.read_csv(os.path.join(self.root_path,
+                                          self.data_path))
+
+        border1s = [0, 12*30*24 - self.seq_len, 12*30*24+4*30*24 - self.seq_len]
+        border2s = [12*30*24, 12*30*24+4*30*24, 12*30*24+8*30*24]
+        border1 = border1s[self.set_type]
+        border2 = border2s[self.set_type]
+        
+        if self.features=='M' or self.features=='MS':
+            cols_data = df_raw.columns[1:]
+            df_data = df_raw[cols_data]
+        elif self.features=='S':
+            df_data = df_raw[[self.target]]
+
+        if self.scale:
+            train_data = df_data[border1s[0]:border2s[0]]
+            self.scaler.fit(train_data.values)
+            data = self.scaler.transform(df_data.values)
+        else:
+            data = df_data.values
+            
+        df_stamp = df_raw[['date']][border1:border2]
+        df_stamp['date'] = pd.to_datetime(df_stamp.date)
+        data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
+
+        self.data_x = data[border1:border2]
+        if self.inverse:
+            self.data_y = df_data.values[border1:border2]
+        else:
+            self.data_y = data[border1:border2]
+        self.data_stamp = data_stamp
+    
+    def __getitem__(self, index):
+        s_begin = index
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len 
+        r_end = r_begin + self.label_len + self.pred_len
+
+        seq_x = self.data_x[s_begin:s_end]
+        if self.inverse:
+            seq_y = np.concatenate([self.data_x[r_begin:r_begin+self.label_len], self.data_y[r_begin+self.label_len:r_end]], 0)
+        else:
+            seq_y = self.data_y[r_begin:r_end]
+        seq_x_mark = self.data_stamp[s_begin:s_end]
+        seq_y_mark = self.data_stamp[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+    
+    def __len__(self):
+        return len(self.data_x) - self.seq_len- self.pred_len + 1
+
+    def inverse_transform(self, data):
+        return self.scaler.inverse_transform(data)
+
+class Dataset_ETT_minute(Dataset):
+    def __init__(self, root_path, flag='train', size=None, 
+                 features='S', data_path='ETTm1.csv', 
+                 target='OT', scale=True, inverse=False, timeenc=0, freq='t', cols=None):
+        # size [seq_len, label_len, pred_len]
+        # info
+        if size == None:
+            self.seq_len = 24*4*4
+            self.label_len = 24*4
+            self.pred_len = 24*4
+        else:
+            self.seq_len = size[0]
+            self.label_len = size[1]
+            self.pred_len = size[2]
+        # init
+        assert flag in ['train', 'test', 'val']
+        type_map = {'train':0, 'val':1, 'test':2}
+        self.set_type = type_map[flag]
+        
+        self.features = features
+        self.target = target
+        self.scale = scale
+        self.inverse = inverse
+        self.timeenc = timeenc
+        self.freq = freq
+        
+        self.root_path = root_path
+        self.data_path = data_path
+        self.__read_data__()
+
+    def __read_data__(self):
+        self.scaler = StandardScaler()
+        df_raw = pd.read_csv(os.path.join(self.root_path,
+                                          self.data_path))
+
+        border1s = [0, 12*30*24*4 - self.seq_len, 12*30*24*4+4*30*24*4 - self.seq_len]
+        border2s = [12*30*24*4, 12*30*24*4+4*30*24*4, 12*30*24*4+8*30*24*4]
+        border1 = border1s[self.set_type]
+        border2 = border2s[self.set_type]
+        
+        if self.features=='M' or self.features=='MS':
+            cols_data = df_raw.columns[1:]
+            df_data = df_raw[cols_data]
+        elif self.features=='S':
+            df_data = df_raw[[self.target]]
+
+        if self.scale:
+            train_data = df_data[border1s[0]:border2s[0]]
+            self.scaler.fit(train_data.values)
+            data = self.scaler.transform(df_data.values)
+        else:
+            data = df_data.values
+            
+        df_stamp = df_raw[['date']][border1:border2]
+        df_stamp['date'] = pd.to_datetime(df_stamp.date)
+        data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
+        
+        self.data_x = data[border1:border2]
+        if self.inverse:
+            self.data_y = df_data.values[border1:border2]
+        else:
+            self.data_y = data[border1:border2]
+        self.data_stamp = data_stamp
+    
+    def __getitem__(self, index):
+        s_begin = index
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len
+        r_end = r_begin + self.label_len + self.pred_len
+
+        seq_x = self.data_x[s_begin:s_end]
+        if self.inverse:
+            seq_y = np.concatenate([self.data_x[r_begin:r_begin+self.label_len], self.data_y[r_begin+self.label_len:r_end]], 0)
+        else:
+            seq_y = self.data_y[r_begin:r_end]
+        seq_x_mark = self.data_stamp[s_begin:s_end]
+        seq_y_mark = self.data_stamp[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+    
+    def __len__(self):
+        return len(self.data_x) - self.seq_len - self.pred_len + 1
+
+    def inverse_transform(self, data):
+        return self.scaler.inverse_transform(data)
+
+
+class Dataset_Custom(Dataset):
+    def __init__(self, root_path, flag='train', size=None, 
+                features='S', data_path='ETTh1.csv', 
+                target='OT', scale=True, inverse=True, timeenc=0, 
+                freq='h', cols=None, categorical_cols=None,checkpoints='./checkpoints/', 
+                encoder=None, scaler=None, setting=None):
+        # size [seq_len, label_len, pred_len]
+        # info
+        if size == None:
+            self.seq_len = 24*4*4
+            self.label_len = 24*4
+            self.pred_len = 24*4
+        else:
+            self.seq_len = size[0]
+            self.label_len = size[1]
+            self.pred_len = size[2]
+        # init
+        assert flag in ['train', 'test', 'val']
+        type_map = {'train':0, 'val':1, 'test':2}
+        self.set_type = type_map[flag]
+        
+        self.features = features
+        self.target = target
+        self.scale = scale
+        self.inverse = inverse
+        self.categorical_cols = categorical_cols  # New parameter for categorical columns
+        self.checkpoints=checkpoints
+        self.setting=setting
+        self.encoder=encoder
+        self.scaler=scaler
+        self.timeenc = timeenc
+        self.freq = freq
+        self.cols=cols
+        self.root_path = root_path
+        self.data_path = data_path
+        self.__read_data__()
+
+    def __read_data__(self):
+        self.scaler = StandardScaler()
+        df_raw = pd.read_csv(os.path.join(self.root_path,
+                                          self.data_path))
+        '''
+        df_raw.columns: ['date', ...(other features), target feature]
+        '''
+        # cols = list(df_raw.columns); 
+        if self.cols:
+            cols=self.cols.copy()
+            cols.remove(self.target)
+        else:
+            cols = list(df_raw.columns); cols.remove(self.target); cols.remove('date')
+        df_raw = df_raw[['date']+cols+[self.target]]
+
+        num_train = int(len(df_raw)*0.7)
+        num_test = int(len(df_raw)*0.2)
+        num_vali = len(df_raw) - num_train - num_test
+        border1s = [0, num_train-self.seq_len, len(df_raw)-num_test-self.seq_len]
+        border2s = [num_train, num_train+num_vali, len(df_raw)]
+        border1 = border1s[self.set_type]
+        border2 = border2s[self.set_type]
+
+        if self.categorical_cols:
+            categorical_features = [col for col in cols if col in self.categorical_cols]
+            train_data_categorical = df_raw[categorical_features][border1s[0]:border2s[0]]
+            self.encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore',drop=None)
+            self.encoder.fit(train_data_categorical.values)
+
+            if self.set_type==0:
+                # Saving the onehotencoder so we can fit it for inference
+                path = os.path.join(self.checkpoints, self.setting)
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                joblib.dump(self.encoder, os.path.join(path,"onehotencoder.pkl"))
+
+            categorical_encoded = self.encoder.transform(df_raw[categorical_features].values)
+            categorical_encoded_df = pd.DataFrame(categorical_encoded, columns=self.encoder.get_feature_names_out(categorical_features))
+            # Get Raw dataset onehotencoded.
+            df_raw = pd.concat([df_raw.drop(categorical_features, axis=1), categorical_encoded_df], axis=1)
+            # Reorder columns
+            final_columns = ['date'] + list(categorical_encoded_df.columns) + [col for col in df_raw.columns if col not in categorical_encoded_df.columns and col != 'date']
+            df_raw = df_raw[final_columns]
+
+        if self.features=='M' or self.features=='MS':
+            cols_data = df_raw.columns[1:]
+            df_data = df_raw[cols_data]
+        elif self.features=='S':
+            df_data = df_raw[[self.target]]
+    
+        if self.categorical_cols:
+            non_categorical_columns = [col for col in cols_data if col not in categorical_encoded_df.columns]
+        else:
+            non_categorical_columns = cols_data
+
+        if self.scale:
+            # Fit the scaler on the continuous features from the training data
+            train_data_continuous = df_data[non_categorical_columns][border1s[0]:border2s[0]]
+            self.scaler.fit(train_data_continuous.values)
+
+            # Save the scaler during training phase
+            if self.set_type == 0:  # training set
+                path = os.path.join(self.checkpoints, self.setting)
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                joblib.dump(self.scaler, os.path.join(path,"scaler.pkl"))
+
+            # Transform the continuous features in the entire dataset
+            data_continuous = self.scaler.transform(df_data[non_categorical_columns].values)
+            # Create a DataFrame for the scaled continuous features
+            data_continuous_df = pd.DataFrame(
+                data_continuous,
+                columns=non_categorical_columns,
+                index=df_data.index
+            )
+
+            # If there are categorical features, combine the scaled continuous features with the categorical features
+            if self.categorical_cols:
+                # Select the one-hot encoded categorical features from df_data
+                data_categorical = df_data[categorical_encoded_df.columns]
+
+                # Concatenate the scaled continuous features and the categorical features
+                data = pd.concat([data_continuous_df, data_categorical], axis=1)
+            else:
+                # If there are no categorical features, use only the scaled continuous features
+                data = data_continuous_df
+
+            # Ensure the columns are in the same order as in df_data
+            data = data[df_data.columns]
+
+            # Convert the DataFrame back to a NumPy array if necessary
+            data = data.values
+        else:
+            data = df_data.values
+            
+        df_stamp = df_raw[['date']][border1:border2]
+        df_stamp['date'] = pd.to_datetime(df_stamp.date)
+        data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
+
+        self.data_x = data[border1:border2]
+        if self.inverse:
+            self.data_y = df_data.values[border1:border2]
+        else:
+            self.data_y = data[border1:border2]
+        self.data_stamp = data_stamp
+    
+    def __getitem__(self, index):
+        s_begin = index
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len 
+        r_end = r_begin + self.label_len + self.pred_len
+
+        seq_x = self.data_x[s_begin:s_end]
+        if self.inverse:
+            seq_y = np.concatenate([self.data_x[r_begin:r_begin+self.label_len], self.data_y[r_begin+self.label_len:r_end]], 0)
+        else:
+            seq_y = self.data_y[r_begin:r_end]
+        seq_x_mark = self.data_stamp[s_begin:s_end]
+        seq_y_mark = self.data_stamp[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+    
+    def __len__(self):
+        return len(self.data_x) - self.seq_len- self.pred_len + 1
+
+    def inverse_transform(self, data):
+        return self.scaler.inverse_transform(data)
+
+class Dataset_Pred(Dataset):
+    def __init__(self, root_path, flag='pred', size=None, 
+                 features='S', data_path='ETTh1.csv', 
+                 target='OT', scale=True, inverse=True, timeenc=0, freq='h', cols=None,
+                 setting=None, categorical_cols=['node'], checkpoints='./checkpoints/', encoder=None, scaler=None):
+        # size [seq_len, label_len, pred_len]
+        # info
+        if size == None:
+            self.seq_len = 24*4*4
+            self.label_len = 24*4
+            self.pred_len = 24*4
+        else:
+            self.seq_len = size[0]
+            self.label_len = size[1]
+            self.pred_len = size[2]
+        # init
+        assert flag in ['pred']
+        
+        self.features = features
+        self.target = target
+        self.scale = scale
+        self.inverse = inverse
+        self.categorical_cols = categorical_cols  # New parameter for categorical columns
+        self.setting=setting
+        self.checkpoints=checkpoints
+        self.encoder=encoder
+        self.scaler=scaler
+        self.timeenc = timeenc
+        self.freq = freq
+        self.cols=cols
+        self.root_path = root_path
+        self.data_path = data_path
+        self.__read_data__()
+
+    def __read_data__(self):
+        df_raw = pd.read_csv(os.path.join(self.root_path,
+                                          self.data_path))
+        '''
+        df_raw.columns: ['date', ...(other features), target feature]
+        '''
+        if self.cols:
+            cols=self.cols.copy()
+            cols.remove(self.target)
+        else:
+            cols = list(df_raw.columns); cols.remove(self.target); cols.remove('date')
+        df_raw = df_raw[['date']+cols+[self.target]]
+        
+        border1 = len(df_raw)-self.seq_len
+        border2 = len(df_raw)
+
+        if self.categorical_cols:
+            if self.encoder is None:
+                path = os.path.join(self.checkpoints, self.setting,"onehotencoder.pkl")
+                self.encoder = joblib.load(path)    
+            categorical_features = [col for col in cols if col in self.categorical_cols]
+            categorical_encoded = self.encoder.transform(df_raw[categorical_features].values)
+            categorical_encoded_df = pd.DataFrame(categorical_encoded, columns=self.encoder.get_feature_names_out(categorical_features))
+            # Get Raw dataset onehotencoded.
+            df_raw = pd.concat([df_raw.drop(categorical_features, axis=1), categorical_encoded_df], axis=1)
+            # Reorder columns
+            final_columns = ['date'] + list(categorical_encoded_df.columns) + [col for col in df_raw.columns if col not in categorical_encoded_df.columns and col != 'date']
+            df_raw = df_raw[final_columns]
+        
+        if self.features=='M' or self.features=='MS':
+            cols_data = df_raw.columns[1:]
+            df_data = df_raw[cols_data]
+        elif self.features=='S':
+            df_data = df_raw[[self.target]]
+
+        if self.categorical_cols:
+            non_categorical_columns = [col for col in cols_data if col not in categorical_encoded_df.columns]
+        else:
+            non_categorical_columns = cols_data
+
+        if self.scale:
+            # Load scaler if not provided
+            if self.scaler is None:
+                path = os.path.join(self.checkpoints, self.setting, "scaler.pkl")
+                self.scaler = joblib.load(path)
+            # Transform the continuous features in the entire dataset
+            data_continuous = self.scaler.transform(df_data[non_categorical_columns].values)
+            # Create a DataFrame for the scaled continuous features
+            data_continuous_df = pd.DataFrame(
+                data_continuous,
+                columns=non_categorical_columns,
+                index=df_data.index
+            )
+            # If there are categorical features, combine the scaled continuous features with the categorical features
+            if self.categorical_cols:
+                # Select the one-hot encoded categorical features from df_data
+                data_categorical = df_data[categorical_encoded_df.columns]
+
+                # Concatenate the scaled continuous features and the categorical features
+                data = pd.concat([data_continuous_df, data_categorical], axis=1)
+            else:
+                # If there are no categorical features, use only the scaled continuous features
+                data = data_continuous_df
+            
+            # Ensure the columns are in the same order as in df_data
+            data = data[df_data.columns]
+
+            # Convert the DataFrame back to a NumPy array if necessary
+            data = data.values
+        else:
+            data = df_data.values
+            
+        tmp_stamp = df_raw[['date']][border1:border2]
+        tmp_stamp['date'] = pd.to_datetime(tmp_stamp.date)
+        pred_dates = pd.date_range(tmp_stamp.date.values[-1], periods=self.pred_len+1, freq=self.freq)
+        
+        df_stamp = pd.DataFrame(columns = ['date'])
+        df_stamp.date = list(tmp_stamp.date.values) + list(pred_dates[1:])
+        data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq[-1:])
+
+        self.data_x = data[border1:border2]
+        if self.inverse:
+            self.data_y = df_data.values[border1:border2]
+        else:
+            self.data_y = data[border1:border2]
+        self.data_stamp = data_stamp
+        print(self.data_x.shape)
+
+    def __getitem__(self, index):
+        s_begin = index
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len
+        r_end = r_begin + self.label_len + self.pred_len
+
+        seq_x = self.data_x[s_begin:s_end]
+        if self.inverse:
+            seq_y = self.data_x[r_begin:r_begin+self.label_len]
+        else:
+            seq_y = self.data_y[r_begin:r_begin+self.label_len]
+        seq_x_mark = self.data_stamp[s_begin:s_end]
+        seq_y_mark = self.data_stamp[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+    
+    def __len__(self):
+        return len(self.data_x) - self.seq_len + 1
+
+    def inverse_transform(self, data):
+        return self.scaler.inverse_transform(data)
