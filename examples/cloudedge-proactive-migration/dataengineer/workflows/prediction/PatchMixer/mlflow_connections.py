@@ -5,6 +5,7 @@ import mlflow
 import mlflow.pytorch
 import mlflow.sklearn
 import torch
+import numpy as np
 import joblib
 from models import Informer, Autoformer, Transformer, DLinear, Linear, NLinear, PatchTST, PatchMixer
 from mlflow import MlflowClient
@@ -113,7 +114,7 @@ class MLflowConnections:
                                 # Log scikit-learn model
                                 sk_model = joblib.load(file_path)
                                 mlflow.sklearn.log_model(
-                                    sk_model=file_path,  # Path to the saved model
+                                    sk_model=sk_model,  # Actual model object
                                     artifact_path=artifact_path,
                                     registered_model_name=artifact_path
                                 )
@@ -208,8 +209,53 @@ class MLflowConnections:
             
             uri_list.append(uri)
         return uri_list
+    
+    def get_latest_experiment_run_id(self, experiment_name: str = None, run_name: str = None) -> str:
+        """
+        Return the latest experiment run id
+        return: run_id hash
+        """
+        # Get the experiment id
+        reactive_experiment = mlflow.get_experiment_by_name(experiment_name)
+        experiment_id = reactive_experiment.experiment_id
 
-    def execute(self):
+        # Retrieve filtered experiment runs by run_name, ordered by descending end time --> First entry will be the most recent
+        runs_df = mlflow.search_runs(
+            experiment_ids=[experiment_id],
+            filter_string=f"run_name='{run_name}'",
+            order_by=["end_time DESC"]
+        )
+        # First row is the most recently finalized one
+        run_id = runs_df.loc[[0]]['run_id'][0]
+        return run_id
+    
+    def upload_prediction(self, all_predictions: dict={}) -> None:
+        """
+        Upload predictions to MLflow. Handles both single values and arrays of predictions.
+        Each prediction value in the array will be logged as a separate metric with an index.
+        The metrics are logged using cluster names instead of full filenames.
+        """
+        mlflow.set_experiment(f"{self.experiment_name}")
+
+        # Retrieve the latest experiment run id
+        run_id = self.get_latest_experiment_run_id(
+            experiment_name=self.experiment_name,
+            run_name=self.team_name
+        )
+
+        with mlflow.start_run(run_id=run_id):
+            for file, pred in all_predictions.items():
+                # Extract cluster name by removing the timestamp portion
+                # Example: 'cloudskin-k8s-edge-worker-0.novalocal_20241216_181600.csv' -> 'cloudskin-k8s-edge-worker-0.novalocal'
+                cluster_name = file.split('_')[0]
+
+                # Convert prediction to numpy array if it isn't already
+                pred_array = np.array(pred)
+                # Multiple prediction values - log each one separately
+                for i, value in enumerate(pred_array):
+                    mlflow.log_metric(key=f"prediction_{cluster_name}_step{i+1}", value=float(value))
+
+    def execute(self,all_predictions=None):
         """
         Execute either load or download action
         
@@ -221,5 +267,7 @@ class MLflowConnections:
             self.download()
         elif self.action == 'get_uri':
             return self.get_uri()
+        elif self.action == 'prediction':
+            return self.upload_prediction(all_predictions)
         else:
-            logging.error(f"Invalid action: {self.action}. Choose 'modeling' or 'download'.")
+            logging.error(f"Invalid action: {self.action}. Choose 'modeling', 'download', 'get_uri' or 'prediction'.")

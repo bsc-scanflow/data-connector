@@ -23,6 +23,7 @@ parser.add_argument('--model', type=str, required=True, default='Autoformer',
 parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')
 parser.add_argument('--root_path', type=str, default='./data/ETT/', help='root path of the data file')
 parser.add_argument('--data_path', type=str, default='ETTh1.csv', help='data file')
+parser.add_argument('--data_iterate', type=bool, default=True, help='Whether to iterate through the root_path directory instead of using data_path directory.')
 parser.add_argument('--features', type=str, default='M',help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
 parser.add_argument('--categorical_cols', type=str, default="node", help="Comma-separated list of categorical columns")
 parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
@@ -174,8 +175,7 @@ else:
         from PatchMixer.mlflow_connections import MLflowConnections
         mlflow_conn=MLflowConnections(args)
         uri_list=mlflow_conn.execute()
-        #Todo: MLflowConnections returns the model_encoder_uri and model_prediction_uri for the most updated model registry.
-
+    
     ii = 0
     setting = 'loss_flag{}_lr{}_dm{}_{}_{}_{}_ft{}_sl{}_pl{}_p{}s{}_random{}_{}'.format(
         args.loss_flag,
@@ -190,15 +190,50 @@ else:
         args.patch_len,
         args.stride,
         args.random_seed, ii)
+    
+    all_predictions = {}
 
-    exp = Exp(args)  # set experiments
-    print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-    preds=exp.predict(setting, 
-            mlflow_load=True, 
-            load=False, 
+    if args.data_iterate:
+        # Get list of all CSV files in root_path
+        csv_files = [f for f in os.listdir(args.root_path) if f.endswith('.csv')]
+        
+        for file in csv_files:
+            print(f"\nProcessing file: {file}")
+            # Update data_path for current file
+            args.data_path = file
+            print(args.data)
+            exp = Exp(args)  # set experiments
+            print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+            preds=exp.predict(setting, 
+                    mlflow_load=True, 
+                    load=False, 
+                    model_encoder_uri=uri_list[0],
+                    model_prediction_uri=uri_list[1],
+                    experiment_name=args.model_id
+                    )
+
+            # Store predictions with filename as key
+            all_predictions[file] = preds
+            torch.cuda.empty_cache()
+    else:
+        # Original single file prediction
+        exp = Exp_Main(args)
+        print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+        preds = exp.predict(setting,
+            mlflow_load=True,
+            load=False,
             model_encoder_uri=uri_list[0],
             model_prediction_uri=uri_list[1],
             experiment_name=args.model_id
-            )
-    torch.cuda.empty_cache()
-    print(preds)
+        )
+        all_predictions[args.data_path] = preds
+        torch.cuda.empty_cache()
+
+    args.action="prediction"
+    upload_results=MLflowConnections(args)
+    upload_results.execute(all_predictions)
+
+    # Print all predictions
+    for file, pred in all_predictions.items():
+        print(f"\nPredictions for {file}:")
+        print(file,pred)
