@@ -32,10 +32,10 @@ class sensor:
     def __call__(self, func):
         @wraps(func)
         async def search_runs(*args, **kwargs):
-            print(args)
-            print(type(args))
-            print(kwargs)
-            print(type(kwargs))
+            #print(args)
+            #print(type(args))
+            #print(kwargs)
+            #print(type(kwargs))
             if self.nodes is not None:
                 mlflow.set_tracking_uri(client.get_tracker_uri(self.islocal))
                 logging.info("Connecting tracking server uri: {}".format(mlflow.get_tracking_uri()))

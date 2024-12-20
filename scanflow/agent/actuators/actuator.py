@@ -27,8 +27,8 @@ class actuator:
     def __call__(self, func):
         @wraps(func)
         async def make_call(*args, **kwargs):
-            print(type(args))
-            print(type(kwargs))
+            #print(type(args))
+            #print(type(kwargs))
             # logging.info(args)
             # logging.info(kwargs)
 
