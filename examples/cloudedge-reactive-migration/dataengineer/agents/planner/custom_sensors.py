@@ -8,7 +8,11 @@ from scanflow.agent.sensors.sensor import sensor
 import mlflow
 import json
 
+# Required imports for new API endpoint
+from scanflow.agent.sensors.sensor_dependency import sensor_dependency
+from fastapi import APIRouter, Depends, status
 
+# Logger config
 logger = logging.getLogger("custom_sensor")
 logging.basicConfig(format='%(asctime)s - %(levelname)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
@@ -76,6 +80,8 @@ def improved_migration_algorythm(latest_run: mlflow.entities.Run, kwargs)-> str:
                 }
                 # Append the object to the list
                 running_services.append(service_dict)
+
+    logger.debug(f"Services found: {[ service['service'].name for service in running_services ]}")
 
     # Initialize a dictionary with migration results
     migration_results = {}
@@ -162,6 +168,8 @@ def initial_migration_algorythm(latest_run: mlflow.entities.Run, kwargs)-> str:
 @sensor(nodes=["cloudedge-migration-experiment-ci"])
 async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
 
+    # DEBUG: print available keys in kwargs
+    logger.info(f"Available keys in kwargs: {kwargs.keys()}")
     # Only take into account the latest run and only if parameter "analysed" is set to false
     if runs:
         latest_run = runs[0]
@@ -240,3 +248,31 @@ async def reactive_watch_qos(runs: List[mlflow.entities.Run], args, kwargs):
 
     # TODO: Modify Sensor class so it allows logging data types other than str
     return migration_result
+
+
+# Reactive QoS Watch - API endpoint
+custom_sensor_router = APIRouter()
+
+@custom_sensor_router.post(
+    path="/analyze_reactive_qos",
+    status_code=status.HTTP_200_OK
+    )
+async def sensors_analyze_reactive_qos(info: tuple = Depends(sensor_dependency)):
+    """
+    API endpoint to trigger the Reactive experiment QoS values
+    """
+    # DEBUG: Review retrieved info from sensor_dependency
+    logging.info(f"ACTIVE RUNS: {info[0]}")
+    logging.info(f"ARGS: {info[1]}")
+    logging.info(f"KWARGS: {info[2].keys()}")
+
+    # Expected available kwargs:
+    # - Initialize environment variables required for KratosClient and Application migration
+    #kwargs["nearbyone_env_email"]
+    #kwargs["nearbyone_env_password"]
+    #kwargs["nearbyone_organization_id"]
+    #kwargs["nearbyone_env_name"]
+    #kwargs['app_name']
+
+    # TEST: Just call the reactive_watch_qos function, see what happens
+    await reactive_watch_qos(**info[2])
