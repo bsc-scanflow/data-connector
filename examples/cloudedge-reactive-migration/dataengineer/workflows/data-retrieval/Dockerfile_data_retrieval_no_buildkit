@@ -34,6 +34,9 @@ RUN pip install --no-cache -r cloudskin-learning-plane/libs/promcsv/requirements
 # Copy application code
 COPY data-retrieval /app/data-retrieval
 
+# Install upgraded dependencies
+RUN pip install --no-cache -r /app/data-retrieval/requirements.txt
+
 WORKDIR /app
 
 ENTRYPOINT ["python", "/app/data-retrieval/data-retrieval.py"]
