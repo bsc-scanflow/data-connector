@@ -16,4 +16,4 @@ spec:
   volumes:
     - name: scanflowpath
       persistentVolumeClaim:
-        claimName: scanflow-scanflow-cloudedge-proactive-migration-experiment-dataengineer
+        claimName: scanflow-scanflow-cloudedge-proactive-migration-ci-dataengineer
