@@ -37,7 +37,7 @@ def get_latest_file(files_path:str, file_ext:str = "*") -> str:
     logging.info(f"Latest CSV file found: {latest_file}")
     return latest_file
 
-def get_latest_experiment_run_id(experiment_name: str = None, run_name: str = None, run_age: int = 300) -> str:
+def get_latest_experiment_run_id(experiment_name: str = "", run_name: str = "", run_age: int = 300) -> str:
     """
     Return the latest experiment run id
     return: run_id hash
@@ -62,7 +62,7 @@ def get_latest_experiment_run_id(experiment_name: str = None, run_name: str = No
     run_id = runs_df.loc[[0]]['run_id'][0]
     return run_id
 
-def retrieve_avg_qos_per_cluster(results_filename:str = None, csv_sep: str = ",") -> dict:
+def retrieve_avg_qos_per_cluster(results_filename:str = "", csv_sep: str = ",") -> dict:
     """
     Calculate the average Latency QoS per each available cluster in the results filename
     """
@@ -108,7 +108,7 @@ def retrieve_avg_qos_per_cluster(results_filename:str = None, csv_sep: str = ","
     return qos_dict
 
 
-def purge_local_experiment_results(filename: str = None) -> None:
+def purge_local_experiment_results(filename: str = "") -> None:
     """
     Locally remove the experiment's results folder
     - This file is already uploaded as an artifact in the MLflow experiment run
@@ -161,6 +161,7 @@ def send_reactive_qos_analysis_request(
 @click.option("--team_name", default=None, type=str)
 @click.option("--csv_path", default="/workflow", type=str)
 @click.option("--csv_sep", default=";", type=str)
+@click.option("--aggregation_method", default="average", type=str)
 @click.option("--purge_local_results", default=False, type=bool)
 @click.option("--analysis_agent_uri", default=None, type=str)
 @click.option("--nearbyone_service_name", default=None, type=str)
@@ -174,6 +175,7 @@ def upload(
     team_name: str,
     csv_path: str,
     csv_sep: str,
+    aggregation_method: str,
     purge_local_results:bool,
     analysis_agent_uri: str,
     nearbyone_service_name: str,
@@ -198,11 +200,22 @@ def upload(
     # Retrieve latest experiment CSV file
     csv_filename = get_latest_file(csv_path, "csv")
 
-    # Calculate the average QoS per each available cluster in the CSV file
-    qos_dict = retrieve_avg_qos_per_cluster(
-        results_filename=csv_filename,
-        csv_sep=csv_sep
-    )
+    # Select the QoS aggregation method
+    match aggregation_method:
+        case "average":
+            # Calculate the average QoS per each available cluster in the CSV file
+            qos_dict = retrieve_avg_qos_per_cluster(
+                results_filename=csv_filename,
+                csv_sep=csv_sep
+            )
+        # TODO: Add other aggregation methods
+        case _:
+            logging.error(f"Incorrect aggregation method: {aggregation_method}. Defaulting to average...")
+            # Calculate the average QoS per each available cluster in the CSV file
+            qos_dict = retrieve_avg_qos_per_cluster(
+                results_filename=csv_filename,
+                csv_sep=csv_sep
+            )
 
     # Initialize the ScanflowTrackerClient for MLflow to retrieve the Tracker URI
     logging.info("Retrieving latest experiment run id...")
@@ -218,7 +231,8 @@ def upload(
         run_name=team_name
     )
 
-    # Attach ALL QoS with indexed cluster_id to the latest experiment run. The max one might be from the previous app's cluster after a migration
+    # Attach ALL QoS with indexed cluster_id to the latest experiment run. There's a chance that the max one might be from the previous app's cluster
+    # after a migration, so the sensor needs to evaluate all cluster's in search for the one where the application is really running.
     logging.info("Uploading QoS values...")
     with mlflow.start_run(run_id=run_id):
         max_qos = 0
@@ -238,7 +252,7 @@ def upload(
         mlflow.log_param(key="max_cluster", value=max_cluster)
         mlflow.log_metric(key="max_idx", value=max_idx)
 
-    # WIP: Send the QoS analysis request
+    # Send the QoS analysis request
     logging.info("Sending QoS analysis request...")
     send_reactive_qos_analysis_request(
         analysis_agent_uri=analysis_agent_uri,
