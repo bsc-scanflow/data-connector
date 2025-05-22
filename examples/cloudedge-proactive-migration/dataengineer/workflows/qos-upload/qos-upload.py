@@ -45,8 +45,8 @@ def get_latest_experiment_run_id(experiment_name: str = "", run_name: str = "", 
     from datetime import datetime, timedelta
 
     # Get the experiment id
-    reactive_experiment = mlflow.get_experiment_by_name(experiment_name)
-    experiment_id = reactive_experiment.experiment_id
+    experiment = mlflow.get_experiment_by_name(experiment_name)
+    experiment_id = experiment.experiment_id
 
     # Retrieve filtered experiment runs by run_name, ordered by descending end time --> First entry will be the most recent
     # WIP: reduce number of runs search to the last 5 minutes
@@ -62,10 +62,12 @@ def get_latest_experiment_run_id(experiment_name: str = "", run_name: str = "", 
     run_id = runs_df.loc[[0]]['run_id'][0]
     return run_id
 
-def retrieve_avg_qos_per_cluster(results_filename:str = "", csv_sep: str = ",") -> dict:
+def retrieve_qos_values_per_cluster(results_filename:str = "", csv_sep: str = ",") -> dict:
     """
-    Calculate the average Latency QoS per each available cluster in the results filename
+    Calculate several Latency QoS aggregated values per each available cluster in the results filename
+    return: a dictionary with keys for each computed QoS aggregation.
     """
+
     # Load the CSV file into a DataFrame
     df = pd.read_csv(results_filename, sep=csv_sep)
     # Fill empty cluster values with "no_cluster"
@@ -101,11 +103,16 @@ def retrieve_avg_qos_per_cluster(results_filename:str = "", csv_sep: str = ",") 
     cluster_grouped = latency_df.groupby("cluster")
     # Get the mean value for each "cluster"
     average_latency = cluster_grouped.mean()
-    logging.info(f"Average latency values: {json.dumps(average_latency.to_dict(), indent=2)}")
-    # qos_dict contains key-value entries, where "key" is the name of the cluster and "value" is the mean QoS latency
-    qos_dict = average_latency.to_dict()["pipelines_status_realtime_pipeline_latency"]
+    average_latency = average_latency.rename(columns={"pipelines_status_realtime_pipeline_latency": "avg"})
+    # Get the max value for each "cluster"
+    max_latency = cluster_grouped.max()
+    max_latency = max_latency.rename(columns={"pipelines_status_realtime_pipeline_latency": "max"})
+    # Merge all aggregated values by "cluster" and transpose it
+    aggregated_latencies = pd.merge(average_latency, max_latency, on="cluster").transpose()
 
-    return qos_dict
+    logging.info(f"Aggregated latency values: {json.dumps(aggregated_latencies.to_dict(), indent=2)}")
+
+    return aggregated_latencies.to_dict()
 
 
 def purge_local_experiment_results(filename: str = "") -> None:
@@ -118,8 +125,9 @@ def purge_local_experiment_results(filename: str = "") -> None:
 
 
 
-def send_reactive_qos_analysis_request(
+def send_qos_analysis_request(
     analysis_agent_uri: str,
+    qos_aggr: str,
     nearbyone_service_name: str,
     nearbyone_env_email: str,
     nearbyone_env_password: str,
@@ -133,6 +141,7 @@ def send_reactive_qos_analysis_request(
         "args": [],
         "kwargs": {
             "app_name": nearbyone_service_name,
+            "qos_aggr": qos_aggr,
             "nearbyone_env_email": nearbyone_env_email,
             "nearbyone_env_password": nearbyone_env_password,
             "nearbyone_env_name": nearbyone_env_name,
@@ -161,7 +170,7 @@ def send_reactive_qos_analysis_request(
 @click.option("--team_name", default=None, type=str)
 @click.option("--csv_path", default="/workflow", type=str)
 @click.option("--csv_sep", default=";", type=str)
-@click.option("--aggregation_method", default="average", type=str)
+@click.option("--qos_aggr", default="avg", type=str)
 @click.option("--purge_local_results", default=False, type=bool)
 @click.option("--analysis_agent_uri", default=None, type=str)
 @click.option("--nearbyone_service_name", default=None, type=str)
@@ -175,7 +184,7 @@ def upload(
     team_name: str,
     csv_path: str,
     csv_sep: str,
-    aggregation_method: str,
+    qos_aggr: str,
     purge_local_results:bool,
     analysis_agent_uri: str,
     nearbyone_service_name: str,
@@ -200,22 +209,11 @@ def upload(
     # Retrieve latest experiment CSV file
     csv_filename = get_latest_file(csv_path, "csv")
 
-    # Select the QoS aggregation method
-    match aggregation_method:
-        case "average":
-            # Calculate the average QoS per each available cluster in the CSV file
-            qos_dict = retrieve_avg_qos_per_cluster(
-                results_filename=csv_filename,
-                csv_sep=csv_sep
-            )
-        # TODO: Add other aggregation methods
-        case _:
-            logging.error(f"Incorrect aggregation method: {aggregation_method}. Defaulting to average...")
-            # Calculate the average QoS per each available cluster in the CSV file
-            qos_dict = retrieve_avg_qos_per_cluster(
-                results_filename=csv_filename,
-                csv_sep=csv_sep
-            )
+    # Calculate several QoS aggregation values per each available cluster in the CSV file
+    qos_dict = retrieve_qos_values_per_cluster(
+        results_filename=csv_filename,
+        csv_sep=csv_sep
+    )
 
     # Initialize the ScanflowTrackerClient for MLflow to retrieve the Tracker URI
     logging.info("Retrieving latest experiment run id...")
@@ -231,31 +229,26 @@ def upload(
         run_name=team_name
     )
 
-    # Attach ALL QoS with indexed cluster_id to the latest experiment run. There's a chance that the max one might be from the previous app's cluster
+    # Attach ALL aggregated QoS values with indexed cluster_id to the latest experiment run. There's a chance that the highest one might be from the previous app's cluster
     # after a migration, so the sensor needs to evaluate all cluster's in search for the one where the application is really running.
-    logging.info("Uploading QoS values...")
+    logging.info("Uploading aggregated QoS values...")
     with mlflow.start_run(run_id=run_id):
-        max_qos = 0
-        max_cluster = "None"
-        # Set initial index to negative value so it makes clear that no cluster is candidate
-        max_idx = -1
-        for idx, (cluster, avg_qos) in enumerate(qos_dict.items()):
-            if avg_qos > max_qos:
-                max_qos = avg_qos
-                max_cluster = cluster
-                max_idx = idx
-            mlflow.log_metric(key=f"qos_{idx}", value=avg_qos)
+        # NEW: Log all the aggregated values
+        for idx, (cluster, aggr_qos) in enumerate(qos_dict.items()):
+            # Log the cluster ID for that index
             mlflow.log_param(key=f"cluster_{idx}", value=cluster)
-            
-        # Log the maximum QoS value
-        mlflow.log_metric(key="max_qos", value=max_qos)
-        mlflow.log_param(key="max_cluster", value=max_cluster)
-        mlflow.log_metric(key="max_idx", value=max_idx)
+            for aggr_key, aggr_value in aggr_qos.items():
+                # Log each aggregated metric available, using its key and cluster index to name them
+                mlflow.log_metric(key=f"{aggr_key}_qos_{idx}", value=aggr_value)
+
+        # Once done, set parameter "last_stage_completed" to "qos-upload"
+        mlflow.log_param(key="last_stage_completed", value="qos-upload")
 
     # Send the QoS analysis request
     logging.info("Sending QoS analysis request...")
-    send_reactive_qos_analysis_request(
+    send_qos_analysis_request(
         analysis_agent_uri=analysis_agent_uri,
+        qos_aggr=qos_aggr,
         nearbyone_service_name=nearbyone_service_name,
         nearbyone_env_email=nearbyone_env_email,
         nearbyone_env_password=nearbyone_env_password,
