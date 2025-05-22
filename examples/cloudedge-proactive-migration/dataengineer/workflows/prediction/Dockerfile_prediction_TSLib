@@ -1,0 +1,14 @@
+# Use Python 3.9.21
+FROM python:3.9.21-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy application code
+COPY prediction prediction
+
+# Install dependencies
+RUN pip install --no-cache-dir -r prediction/TSLib/requirements.txt
+
+# Optional: Set default command
+CMD ["sh", "./prediction/Informer_DLStreamer_script_cat_inference.sh"]
