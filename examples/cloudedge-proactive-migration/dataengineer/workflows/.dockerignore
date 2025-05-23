@@ -1,2 +1,3 @@
 # Common files to ignore when building any of the workflow stages
 **/Dockerfile_*
+**/__pycache__
