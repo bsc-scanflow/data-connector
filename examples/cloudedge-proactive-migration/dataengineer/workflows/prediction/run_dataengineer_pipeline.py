@@ -5,6 +5,14 @@ import os
 import random
 import json
 import sys
+import logging
+import fnmatch
+
+# Logger config
+logger = logging.getLogger("predictor")
+logging.basicConfig(format='%(asctime)s - %(levelname)s: %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
+logger.setLevel(logging.INFO)
 
 # Add TSLib directory to Python path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,6 +29,32 @@ from TSLib.exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
 from TSLib.utils.print_args import print_args
 from preprocessing_new import Preprocessing
 
+
+# Helper functions
+def get_latest_file(files_path:str, file_ext:str = "*") -> str:
+    """
+    Sort all available files from the files path and return the most recent one
+    - files_path: Experiment's root folder. Within it there's a subfolder for each experiment run
+    - file_ext: Extension of file to look for
+    return: CSV absolute filepath
+    """
+    
+    walk_results = os.walk(files_path)
+    mtime = 0
+    latest_file = ""
+
+    # We only need the root and filenames list here, not the dirnames
+    # TODO: Improve this operation as it will increase in time with the amount of experiment runs
+    # - Previous experiment results aren't being purged as of now
+    for root, dirnames, filenames in walk_results:
+        for filename in fnmatch.filter(filenames, f"*.{file_ext}"):
+            cur_filename = os.path.join(root, filename)
+            if os.path.getmtime(cur_filename) > mtime:
+                mtime = os.path.getmtime(cur_filename)
+                latest_file = cur_filename
+    
+    logger.info(f"Latest CSV file found: {latest_file}")
+    return latest_file
 
 
 if __name__ == "__main__":
@@ -429,10 +463,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.categorical_cols:
         args.categorical_cols = args.categorical_cols.split(",")
-    print(torch.cuda.is_available())
+    logger.info(torch.cuda.is_available())
     if torch.cuda.is_available() and args.use_gpu:
         args.device = torch.device("cuda:{}".format(args.gpu))
-        print("Using GPU")
+        logger.info("Using GPU")
     else:
         if hasattr(torch.backends, "mps"):
             args.device = (
@@ -442,7 +476,7 @@ if __name__ == "__main__":
             )
         else:
             args.device = torch.device("cpu")
-        print("Using cpu or mps")
+        logger.info("Using cpu or mps")
 
     if args.use_gpu and args.use_multi_gpu:
         args.devices = args.devices.replace(" ", "")
@@ -450,7 +484,7 @@ if __name__ == "__main__":
         args.device_ids = [int(id_) for id_ in device_ids]
         args.gpu = args.device_ids[0]
 
-    print("Args in experiment:")
+    logger.info("Args in experiment:")
     print_args(args)
 
     if args.task_name == "long_term_forecast":
@@ -506,14 +540,14 @@ if __name__ == "__main__":
                 ii,
             )
 
-            print(
+            logger.info(
                 ">>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>".format(
                     setting
                 )
             )
             exp.train(setting)
 
-            print(
+            logger.info(
                 ">>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<".format(
                     setting
                 )
@@ -553,31 +587,32 @@ if __name__ == "__main__":
 
     if args.data_iterate:
         # Get list of all CSV files in root_path
-        csv_files = [f for f in os.listdir(args.root_path) if f.endswith('.csv')]
-        
+        #csv_files = [f for f in os.listdir(args.root_path) if f.endswith('.csv')]
+        csv_files = [f for f in get_latest_file(args.root_path, 'csv')]
+
         if not os.path.exists(args.output_path):
             os.makedirs(args.output_path)
-            print(f"Created output directory: {args.output_path}")
+            logger.info(f"Created output directory: {args.output_path}")
         else:
             # Check if directory is not empty and purge it
             existing_files = [f for f in os.listdir(args.output_path) if f.endswith('.csv')]
             if existing_files:
-                print(f"Found {len(existing_files)} existing prediction files, purging...")
+                logger.info(f"Found {len(existing_files)} existing prediction files, purging...")
                 for file in existing_files:
                     file_path = os.path.join(args.output_path, file)
                     os.remove(file_path)
-                print(f"Purged {len(existing_files)} files from output directory")
+                logger.info(f"Purged {len(existing_files)} files from output directory")
     
         # Initialize list to collect all predictions
         all_predictions_data = []
     
         for file in csv_files:
-            print(f"\nProcessing file: {file}")
+            logger.info(f"\nProcessing file: {file}")
             # Update data_path for current file
             args.data_path = file
-            print(args.data)
+            logger.info(args.data)
             exp = Exp(args)  # set experiments
-            print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+            logger.info('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
             preds = exp.predict(setting)
             
             # Extract cluster name and timestamps from the input data
@@ -619,10 +654,10 @@ if __name__ == "__main__":
             output_filename = "all_predictions.csv"
             output_path = os.path.join(args.output_path, output_filename)
             predictions_df.to_csv(output_path, index=False)
-            print(f"\nSaved all predictions to {output_path}")
-            print(f"Total predictions: {len(predictions_df)} rows from {len(csv_files)} clusters")
+            logger.info(f"\nSaved all predictions to {output_path}")
+            logger.info(f"Total predictions: {len(predictions_df)} rows from {len(csv_files)} clusters")
     
     # Print all predictions
     for file, pred in all_predictions.items():
-        print(f"\nPredictions for {file}:")
-        print(file, pred)
+        logger.info(f"\nPredictions for {file}:")
+        logger.info(file, pred)
