@@ -4,7 +4,7 @@ import os
 from typing import Tuple, Dict
 
 import pandas as pd
-
+import fnmatch
 
 class Preprocessing:
     def __init__(self, **kwargs):
@@ -45,7 +45,7 @@ class Preprocessing:
             cluster_dfs = self.prepare_inference_data(aggregated_dataset)
             valid_clusters = self.check_nulls_in_numerical_columns(cluster_dfs)
             valid_clusters = self.check_data_completeness(valid_clusters)
-            self.purge_input_files()
+            self.purge_files()
             self.save_inference_data(valid_clusters)
         else:
             self.inference = 0
@@ -62,10 +62,36 @@ class Preprocessing:
             return csv_files
         except FileNotFoundError:
             raise OSError("Directory does not exist.")
+    # Helper functions
+    @staticmethod
+    def get_latest_file(files_path:str, file_ext:str = "*") -> str:
+        """
+        Sort all available files from the files path and return the most recent one
+        - files_path: Experiment's root folder. Within it there's a subfolder for each experiment run
+        - file_ext: Extension of file to look for
+        return: CSV absolute filepath
+        """
+
+        walk_results = os.walk(files_path)
+        mtime = 0
+        latest_file = ""
+
+        # We only need the root and filenames list here, not the dirnames
+        # TODO: Improve this operation as it will increase in time with the amount of experiment runs
+        # - Previous experiment results aren't being purged as of now
+        for root, dirnames, filenames in walk_results:
+            for filename in fnmatch.filter(filenames, f"*.{file_ext}"):
+                cur_filename = os.path.join(root, filename)
+                if os.path.getmtime(cur_filename) > mtime:
+                    mtime = os.path.getmtime(cur_filename)
+                    latest_file = cur_filename
+
+        print(f"Latest CSV file found: {latest_file}")
+        return latest_file
 
     def preprocess_files(self):
         dataset = None
-        csv_files = self.get_files(self.input)
+        csv_files = self.get_files(self.input) if self.inference == 0 else [self.get_latest_file(self.input)]
         current_day = None
 
         for file in csv_files:
@@ -463,24 +489,26 @@ class Preprocessing:
 
         return valid_clusters
     
-    def purge_input_files(self):
+    def purge_files(self) -> None:
         """
-        Delete all CSV files from the input directory.
+        Delete all CSV files from the output directory.
         Only used during inference mode.
         """
         if self.inference != 1:
             return
 
         try:
-            csv_files = self.get_files(self.input)
-            deleted_count = 0
-
-            for file in csv_files:
-                file_path = os.path.join(self.input, file)
-                os.remove(file_path)
-                deleted_count += 1
-
-            print(f"Purged {deleted_count} CSV files from input directory: {self.input}")
-
+            if not os.path.exists(self.output):
+                os.makedirs(self.output)
+                print(f"Created output directory: {self.output}")
+            else:
+                # Check if directory is not empty and purge it
+                csv_files = self.get_files(self.output)
+                deleted_count = 0
+                for file in csv_files:
+                    file_path = os.path.join(self.output, file)
+                    os.remove(file_path)
+                    deleted_count += 1
+                print(f"Purged {deleted_count} CSV files from output directory: {self.output}")
         except Exception as e:
             print(f"Error purging files: {e}")

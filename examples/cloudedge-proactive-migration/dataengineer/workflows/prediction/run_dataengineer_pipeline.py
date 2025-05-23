@@ -6,7 +6,6 @@ import random
 import json
 import sys
 import logging
-import fnmatch
 
 # Logger config
 logger = logging.getLogger("predictor")
@@ -30,31 +29,6 @@ from TSLib.utils.print_args import print_args
 from preprocessing_new import Preprocessing
 
 
-# Helper functions
-def get_latest_file(files_path:str, file_ext:str = "*") -> str:
-    """
-    Sort all available files from the files path and return the most recent one
-    - files_path: Experiment's root folder. Within it there's a subfolder for each experiment run
-    - file_ext: Extension of file to look for
-    return: CSV absolute filepath
-    """
-    
-    walk_results = os.walk(files_path)
-    mtime = 0
-    latest_file = ""
-
-    # We only need the root and filenames list here, not the dirnames
-    # TODO: Improve this operation as it will increase in time with the amount of experiment runs
-    # - Previous experiment results aren't being purged as of now
-    for root, dirnames, filenames in walk_results:
-        for filename in fnmatch.filter(filenames, f"*.{file_ext}"):
-            cur_filename = os.path.join(root, filename)
-            if os.path.getmtime(cur_filename) > mtime:
-                mtime = os.path.getmtime(cur_filename)
-                latest_file = cur_filename
-    
-    logger.info(f"Latest CSV file found: {latest_file}")
-    return latest_file
 
 
 if __name__ == "__main__":
@@ -505,9 +479,9 @@ if __name__ == "__main__":
     with open(config_dir, 'r') as file:
             config = json.load(file)
     
-    prep_config = config["preprocessing"]  # Add this line
+    prep_config = config["preprocessing"] 
     prep_config["input"] = args.root_path
-    prep_config["output"] = args.root_path
+    prep_config["output"] = "/tmp/preprocessed_data/"
     Preprocessing(**prep_config)
 
 
@@ -586,9 +560,8 @@ if __name__ == "__main__":
         all_predictions = {}
 
     if args.data_iterate:
-        # Get list of all CSV files in root_path
-        #csv_files = [f for f in os.listdir(args.root_path) if f.endswith('.csv')]
-        csv_files = [f for f in get_latest_file(args.root_path, 'csv')]
+        # Get list of all CSV files in /tmp/preprocessed_data/ path
+        csv_files = [f for f in os.listdir("/tmp/preprocessed_data/") if f.endswith('.csv')]
 
         if not os.path.exists(args.output_path):
             os.makedirs(args.output_path)
