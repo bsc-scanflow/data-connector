@@ -560,8 +560,8 @@ if __name__ == "__main__":
         all_predictions = {}
 
     if args.data_iterate:
-        # Get list of all CSV files in /tmp/preprocessed_data/ path
-        csv_files = [f for f in os.listdir("/tmp/preprocessed_data/") if f.endswith('.csv')]
+        # Get list of all CSV files in prep_config["output"] path
+        csv_files = [f for f in os.listdir(prep_config["output"]) if f.endswith('.csv')]
 
         if not os.path.exists(args.output_path):
             os.makedirs(args.output_path)
