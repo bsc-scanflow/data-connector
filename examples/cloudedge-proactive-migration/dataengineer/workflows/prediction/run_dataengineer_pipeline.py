@@ -482,6 +482,7 @@ if __name__ == "__main__":
     prep_config = config["preprocessing"] 
     prep_config["input"] = args.root_path
     prep_config["output"] = "/tmp/preprocessed_data/"
+    args.root_path = prep_config["output"] 
     Preprocessing(**prep_config)
 
 
@@ -583,7 +584,6 @@ if __name__ == "__main__":
             logger.info(f"\nComputing inference file: {file}")
             # Update data_path for current file
             args.data_path = file
-            args.root_path = prep_config["output"] 
             logger.info(args.data)
             exp = Exp(args)  # set experiments
             logger.info('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
