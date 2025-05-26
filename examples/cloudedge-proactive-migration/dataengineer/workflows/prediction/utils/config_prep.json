@@ -1,7 +1,7 @@
 {
     "preprocessing":{
         "input":"",
-        "output":"",
+        "output":"/tmp/preprocessed_data/",
         "data_structure":{
             "key_values":[
                 ["timestamp","datetime64[s]"],

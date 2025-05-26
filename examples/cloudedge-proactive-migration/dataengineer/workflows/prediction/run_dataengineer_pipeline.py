@@ -580,9 +580,10 @@ if __name__ == "__main__":
         all_predictions_data = []
     
         for file in csv_files:
-            logger.info(f"\nProcessing file: {file}")
+            logger.info(f"\nComputing inference file: {file}")
             # Update data_path for current file
             args.data_path = file
+            args.root_path = prep_config["output"] 
             logger.info(args.data)
             exp = Exp(args)  # set experiments
             logger.info('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
