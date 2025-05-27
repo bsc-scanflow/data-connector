@@ -611,7 +611,7 @@ if __name__ == "__main__":
             # Add predictions to the collection with cluster info and timestamps
             for i, pred_value in enumerate(predictions_flat):
                 all_predictions_data.append({
-                    'date': future_timestamps[i].strftime('%Y-%m-%dT%H:%M:%S'),
+                    'timestamp': int(future_timestamps[i].timestamp()),
                     'cluster': cluster_name,
                     args.target: pred_value
                 })
@@ -627,7 +627,7 @@ if __name__ == "__main__":
             # Save all predictions to a single CSV file
             output_filename = "all_predictions.csv"
             output_path = os.path.join(args.output_path, output_filename)
-            predictions_df.to_csv(output_path, index=False)
+            predictions_df.to_csv(output_path, index=False, sep=';')
             logger.info(f"\nSaved all predictions to {output_path}")
             logger.info(f"Total predictions: {len(predictions_df)} rows from {len(csv_files)} clusters")
     
