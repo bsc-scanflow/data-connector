@@ -99,6 +99,9 @@ class Preprocessing:
             file_path = os.path.join(self.input, file)
             data = pd.read_csv(file_path, sep=";")
 
+            # Filter to only keep configured columns
+            data = self.filter_to_config_columns(data)
+
             # Convert data types according to config
             data = data.astype(self.dtypes)
 
@@ -180,6 +183,30 @@ class Preprocessing:
             dataset.reset_index(inplace=True, drop=True)
             return dataset
         return None
+    
+    def filter_to_config_columns(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Filters DataFrame to only keep columns defined in the configuration.
+        Silently removes any extra columns not in config.
+
+        Args:
+            data: Input DataFrame
+
+        Returns:
+            DataFrame with only the configured columns that exist in the input
+        """
+        # Get all expected columns from config
+        expected_columns = (
+            self.key_values + 
+            self.pipeline_values + 
+            self.node_values + 
+            self.pipeline_telemetry
+        )
+
+        # Keep only columns that exist in both the data and the config
+        columns_to_keep = [col for col in expected_columns if col in data.columns]
+
+        return data[columns_to_keep]
 
     def aggregate_by_cluster(self, df):
         """
