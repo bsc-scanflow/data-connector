@@ -1,14 +1,14 @@
 name: Execute Proactive Migration notebook
 
 on:
-  push:
-    branches:
-      - 'feat/proactive-migration'
-      - 'feat/proactive-migration-**'
-    paths:
-      - examples/cloudedge-proactive-migration/**
-      - tutorials/cloudedge-proactive-migration/**
-      - .github/workflows/proactive_migration.yaml
+  #push:
+  #  branches:
+  #    - 'feat/proactive-migration'
+  #    - 'feat/proactive-migration-**'
+  #  paths:
+  #    - examples/cloudedge-proactive-migration/**
+  #    - tutorials/cloudedge-proactive-migration/**
+  #    - .github/workflows/proactive_migration.yaml
   workflow_dispatch: {}
 
 # Set environment variables
