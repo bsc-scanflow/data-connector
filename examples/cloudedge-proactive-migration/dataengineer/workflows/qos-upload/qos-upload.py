@@ -208,7 +208,11 @@ def upload(
     logging.info("Retrieving latest metrics CSV file...")
     # Retrieve latest experiment CSV file
     csv_filename = get_latest_file(csv_path, "csv")
-
+    
+    if not csv_filename:
+        logging.error("No CSV file found with latest results! Exiting")
+        sys.exit(1)
+    
     # Calculate several QoS aggregation values per each available cluster in the CSV file
     qos_dict = retrieve_qos_values_per_cluster(
         results_filename=csv_filename,
