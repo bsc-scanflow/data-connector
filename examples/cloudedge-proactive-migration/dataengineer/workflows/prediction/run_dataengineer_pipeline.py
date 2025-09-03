@@ -25,6 +25,7 @@ from TSLib.exp.exp_classification import Exp_Classification
 from TSLib.exp.exp_imputation import Exp_Imputation
 from TSLib.exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
 from TSLib.exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
+from TSLib.exp.exp_linear_regression import Exp_Linear_Regression
 from TSLib.utils.print_args import print_args
 from preprocessing_new import Preprocessing
 
@@ -45,7 +46,7 @@ if __name__ == "__main__":
         type=str,
         required=True,
         default="long_term_forecast",
-        help="task name, options:[long_term_forecast, short_term_forecast, imputation, classification, anomaly_detection]",
+        help="task name, options:[long_term_forecast, short_term_forecast, imputation, classification, anomaly_detection, linear_regression]",
     )
     parser.add_argument(
         "--is_training", type=int, required=True, default=1, help="status"
@@ -471,6 +472,8 @@ if __name__ == "__main__":
         Exp = Exp_Anomaly_Detection
     elif args.task_name == "classification":
         Exp = Exp_Classification
+    elif args.task_name == "linear_regression":
+        Exp = Exp_Linear_Regression
     else:
         Exp = Exp_Long_Term_Forecast
     
