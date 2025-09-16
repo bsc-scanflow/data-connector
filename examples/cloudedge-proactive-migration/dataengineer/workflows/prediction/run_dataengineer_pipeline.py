@@ -26,6 +26,7 @@ from TSLib.exp.exp_imputation import Exp_Imputation
 from TSLib.exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
 from TSLib.exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
 from TSLib.exp.exp_linear_regression import Exp_Linear_Regression
+from TSLib.exp.exp_random_forest import Exp_Random_Forest
 from TSLib.utils.print_args import print_args
 from preprocessing_new import Preprocessing
 
@@ -474,6 +475,8 @@ if __name__ == "__main__":
         Exp = Exp_Classification
     elif args.task_name == "linear_regression":
         Exp = Exp_Linear_Regression
+    elif args.task_name == "random_forest": 
+        Exp = Exp_Random_Forest
     else:
         Exp = Exp_Long_Term_Forecast
     
