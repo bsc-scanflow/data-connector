@@ -1,6 +1,6 @@
 {
   "prometheus_server": "http://10.17.252.5:21963",
-  "start": "5 minutes ago",
+  "start": "30 minutes ago",
   "step": "30",
   "output_dir": "/workflow/proactive_migration_experiment",
   "name": "migration_experiment",
