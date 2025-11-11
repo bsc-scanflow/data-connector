@@ -31,8 +31,6 @@ from TSLib.utils.print_args import print_args
 from preprocessing_new import Preprocessing
 
 
-
-
 if __name__ == "__main__":
     fix_seed = 2021
     random.seed(fix_seed)
@@ -430,10 +428,10 @@ if __name__ == "__main__":
         "--inverse", type=bool, help="inverse output data", default=False
     )
     parser.add_argument(
-    "--output_path",
-    type=str,
-    default="./workflow/results/",
-    help="path to save prediction outputs",
+        "--output_path",
+        type=str,
+        default="./workflow/results/",
+        help="path to save prediction outputs",
     )
     parser.add_argument(
         "--output_len",
@@ -589,6 +587,7 @@ if __name__ == "__main__":
             input_file_path = os.path.join(args.root_path, file)
             try:
                 df = pd.read_csv(input_file_path)
+                print(df)
             except Exception as e:
                 print(f"Skipping file due to read error {file}: {e}")
                 continue
@@ -636,31 +635,35 @@ if __name__ == "__main__":
                 periods=n_steps,
                 freq='30S'
             )
-            # Prepare predictions for CSV format
+            # Prepare predictions for CSV format (legacy format)
             print(preds.shape)
             print(preds)
             predictions_flat = preds.reshape(-1)
             print(predictions_flat.shape)
-            # Use the last row's cluster for output tagging if present
-            cluster_name = str(merged_df['cluster'].iloc[-1]) if 'cluster' in merged_df.columns else ''
+            # Legacy: always include a 'cluster' column. Take the latest available value
+            cluster_value = str(merged_df['cluster'].dropna().iloc[-1]) if 'cluster' in merged_df.columns else ''
             all_predictions_data = []
             for i, pred_value in enumerate(predictions_flat):
                 row = {
-                    'date': future_timestamps[i].strftime('%Y-%m-%dT%H:%M:%S'),
+                    'timestamp': int(future_timestamps[i].timestamp()),  # epoch seconds
+                    'cluster': cluster_value,
                     args.target: float(pred_value)
                 }
-                if cluster_name:
-                    row['cluster'] = cluster_name
                 all_predictions_data.append(row)
             # Store predictions with key 'merged_all' (for console output)
             all_predictions['merged_all'] = preds
             torch.cuda.empty_cache()
             # Restore original root_path
             args.root_path = saved_root
-            # Save all predictions to a single CSV file
+            # Save all predictions to a single CSV file (legacy: semicolon-separated)
             predictions_df = pd.DataFrame(all_predictions_data)
             output_filename = "all_predictions.csv"
             output_path = os.path.join(args.output_path, output_filename)
-            predictions_df.to_csv(output_path, index=False)
+            predictions_df.to_csv(output_path, index=False, sep=';')
             print(f"\nSaved all predictions to {output_path}")
             print(f"Total predictions: {len(predictions_df)} rows")
+
+    # Print all predictions
+    for file, pred in all_predictions.items():
+        logger.info(f"\nPredictions for {file}:")
+        logger.info(file, pred)
