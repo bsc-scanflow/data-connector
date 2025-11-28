@@ -4,30 +4,31 @@ LP agents in charge of providing predictions and recommendations (after modellin
 
 ![architecture](img/data_connector.png)
 
-
 ### data-connector internal
 
 ![architecture-internal](img/data-connector-internal.png)
 
-
 #### inference pipeline
+
 The data-connector has the inference pipeline to predict the qos of a given application on all machines. (this pipeline can connect with different models/parameters saved in scanflow)
 
 #### recommender
-The data-connector has a recommender 
--  sensor: get the qos predictions and choose the machine id with max_qos
+
+The data-connector has a recommender
+
+- sensor: get the qos predictions and choose the machine id with max_qos
 - actuator: trigger at this time k8s to patch the placement of the application deployment.
 
 #### timer
-The data-connector has a timer 
+
+The data-connector has a timer
+
 - trigger the pipeline periodically, the qos predictions will be saved to scanflow.
 - trigger the recommender periodically to check the qos so that can make actions.
-
 
 ### Results
 
 Here are the log details from the file [log](/examples/cloudedge/target_app_test/run.log):
-
 
 ```
 12-Apr-24 10:39:31 -  INFO - Job "watch_qos (trigger: interval[0:05:00], next run at: 2024-04-12 10:44:31 UTC)" executed successfully
@@ -53,3 +54,10 @@ Here are the log details from the file [log](/examples/cloudedge/target_app_test
 12-Apr-24 10:54:31 -  INFO - update_deployment_with_patch succeeded
 ```
 
+## Acknowledgements
+
+<img width="80px" src="https://cloudskin.eu/assets/img/europe.jpg" alt="European flag" />
+
+CLOUDSKIN has received funding from the European Union’s Horizon research and innovation programme under grant agreement No 101092646.
+
+https://cloudskin.eu
