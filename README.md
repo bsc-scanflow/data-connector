@@ -4,29 +4,29 @@ LP agents in charge of providing predictions and recommendations (after modellin
 
 ![architecture](img/data_connector.png)
 
-### data-connector internal
+## data-connector internals
 
 ![architecture-internal](img/data-connector-internal.png)
 
-#### inference pipeline
+### inference pipeline
 
 The data-connector has the inference pipeline to predict the qos of a given application on all machines. (this pipeline can connect with different models/parameters saved in scanflow)
 
-#### recommender
+### recommender
 
 The data-connector has a recommender
 
 - sensor: get the qos predictions and choose the machine id with max_qos
 - actuator: trigger at this time k8s to patch the placement of the application deployment.
 
-#### timer
+### timer
 
 The data-connector has a timer
 
 - trigger the pipeline periodically, the qos predictions will be saved to scanflow.
 - trigger the recommender periodically to check the qos so that can make actions.
 
-### Results
+## Results
 
 Here are the log details from the file [log](/examples/cloudedge/target_app_test/run.log):
 
@@ -53,6 +53,10 @@ Here are the log details from the file [log](/examples/cloudedge/target_app_test
 12-Apr-24 10:54:31 -  INFO - agent is patch deployment to node - {'spec': {'template': {'spec': {'nodeSelector': {'kubernetes.io/hostname': 'cloudskin-k8s-worker-1.novalocal'}}}}}
 12-Apr-24 10:54:31 -  INFO - update_deployment_with_patch succeeded
 ```
+
+## Examples
+
+Usage examples can be found in 
 
 ## Acknowledgements
 
