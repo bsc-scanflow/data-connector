@@ -1,0 +1,42 @@
+# No Buildkit version: Python's Docker SDK doesn't use it
+# =======================================================
+# Workaround: define Git redentials as BuildArgs instead of Secrets
+# - Python Docker SDK doesn't allow its client to create secrets if not using Docker Swarm
+# - It also doesn't use BuildKit yet but the old/deprecated build infrastructure: https://github.com/docker/docker-py/issues/2230
+# - More modern Dockerfiles can't be built
+ARG GIT_AUTH_USERNAME
+ARG GIT_AUTH_TOKEN
+
+# 2nd stage - release
+# ===================
+FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor AS release
+
+# Workaround: use BuildArgs for the Git credentials
+# - Retrieve PromCSV library
+ARG GIT_AUTH_USERNAME
+ARG GIT_AUTH_TOKEN
+# Can't use ADD because Docker SDK doesn't expand the Git repository
+#ADD https://$GIT_AUTH_USERNAME:$GIT_AUTH_TOKEN@gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-learning-plane.git#main:libs/promcsv /app/promcsv
+
+# Clone the repository instead of fetching it during build
+RUN git clone --depth 1 https://$GIT_AUTH_USERNAME:$GIT_AUTH_TOKEN@gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-learning-plane.git && \
+    mkdir -p /app/data-retrieval/promcsv && \
+    mv cloudskin-learning-plane/libs/promcsv/promcsv /app/data-retrieval/
+
+# Install dependencies and remove git repository
+#RUN python -m pip install --no-cache -r /app/promcsv/requirements.txt
+RUN pip install --no-cache -r cloudskin-learning-plane/libs/promcsv/requirements.txt && \
+    rm -r cloudskin-learning-plane
+
+# Remove git repository
+#RUN rm -r cloudskin-learning-plane
+
+# Copy application code
+COPY data-retrieval /app/data-retrieval
+
+# Install upgraded dependencies
+RUN pip install --no-cache -r /app/data-retrieval/requirements.txt
+
+WORKDIR /app
+
+ENTRYPOINT ["python", "/app/data-retrieval/data-retrieval.py"]

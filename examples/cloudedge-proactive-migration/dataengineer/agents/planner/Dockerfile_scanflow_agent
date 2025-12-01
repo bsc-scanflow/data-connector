@@ -1,0 +1,16 @@
+
+FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-agent
+
+ENV AGENT_NAME planner
+ENV AGENT_TYPE planner
+
+RUN mkdir /agent
+COPY planner /agent
+
+ENV sensors '{"proactive_watch_qos": {"name": "proactive_watch_qos", "func": "scanflow.agent.template.planner.custom_sensors.proactive_watch_qos", "trigger": {"type": "cron", "crontab": "0 0 31 2 *"}, "kwargs": {"frequency": 300, "app_name": "DLstreamer Pipeline Server", "qos_aggr": "avg", "nearbyone_env_name": "nearbyone.innovationlab", "nearbyone_organization_id": "a698502b-f2c9-4e40-9d6b-be7688c1d82e", "nearbyone_env_email": "cloudskin-project@bsc.es", "nearbyone_env_password": "EjmIThd3YWckoB5m8ylp"}}}' 
+
+RUN pip install -r /agent/requirements.txt
+
+ENV PYTHONPATH="$PYTHONPATH:/scanflow/scanflow/scanflow/agent/template/planner"
+
+CMD [ "cp /agent/* /scanflow/scanflow/scanflow/agent/template/planner && uvicorn main:agent --reload --host 0.0.0.0 --port 8080" ]

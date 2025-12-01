@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cloudedge-debug-pod
+spec:
+  containers:
+  - name: busybox
+    image: busybox:stable
+    command:
+      - sleep
+    args:
+      - infinity
+    volumeMounts:
+      - mountPath: /scanflow
+        name: scanflowpath
+      - mountPath: /workflow
+        name: workflowpath
+  volumes:
+    - name: scanflowpath
+      persistentVolumeClaim:
+        claimName: scanflow-scanflow-cloudedge-proactive-migration-ci-dataengineer
+    - name: workflowpath
+      persistentVolumeClaim:
+        claimName: batch-inference-proactive-graph

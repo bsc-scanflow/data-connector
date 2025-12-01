@@ -1,24 +1,24 @@
 name: Execute Reactive Migration notebook
 
 on:
-  pull_request:
-    branches:
-      - 'main'
-      - 'pipeline_integration'
-    paths:
-      - examples/cloudedge-reactive-migration/**
-      - tutorials/cloudedge-reactive-migration/**
-      - .github/workflows/reactive_migration.yaml
-  push:
-    branches:
-      - 'feat/reactive-migration-**'
-      #- 'main'
-      #- 'pipeline_integration'
-      - 'fix/**'
-    paths:
-      - examples/cloudedge-reactive-migration/**
-      - tutorials/cloudedge-reactive-migration/**
-      - .github/workflows/reactive_migration.yaml
+  # pull_request:
+  #   branches:
+  #     - 'main'
+  #     - 'pipeline_integration'
+  #   paths:
+  #     - examples/cloudedge-reactive-migration/**
+  #     - tutorials/cloudedge-reactive-migration/**
+  #     - .github/workflows/reactive_migration.yaml
+  # push:
+  #   branches:
+  #     - 'feat/reactive-migration-**'
+  #     #- 'main'
+  #     #- 'pipeline_integration'
+  #     - 'fix/**'
+  #   paths:
+  #     - examples/cloudedge-reactive-migration/**
+  #     - tutorials/cloudedge-reactive-migration/**
+  #     - .github/workflows/reactive_migration.yaml
   workflow_dispatch: {}
 
 # Set environment variables

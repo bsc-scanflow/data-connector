@@ -1,0 +1,18 @@
+# No Buildkit version: Python's Docker SDK doesn't use it
+# =======================================================
+# Workaround: define Git redentials as BuildArgs instead of Secrets
+# - Python Docker SDK doesn't allow its client to create secrets if not using Docker Swarm
+# - It also doesn't use BuildKit yet but the old/deprecated build infrastructure: https://github.com/docker/docker-py/issues/2230
+# - More modern Dockerfiles can't be built
+FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor AS release
+# FROM proactive-modeling-patchmixer AS release
+# Install dependencies
+
+# Copy application code
+COPY modeling modeling
+COPY load-data data
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir -r modeling/PatchMixer/requirements.txt
+

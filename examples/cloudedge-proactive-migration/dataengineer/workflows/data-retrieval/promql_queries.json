@@ -1,0 +1,58 @@
+{
+  "prometheus_server": "http://10.17.252.5:21963",
+  "start": "24 hours ago",
+  "step": "30",
+  "output_dir": "/workflow/proactive_migration_experiment",
+  "name": "migration_experiment",
+  "queries": [
+    {
+      "name": "pipeline_metrics",
+      "metrics": [
+        "pipelines_status_.*"
+      ],
+      "labels": {
+        "pipeline_state": "RUNNING"
+      },
+      "schema": {
+        "columns": ["__name__", "cluster", "pipeline_id"],
+        "dtype": "float"
+      }
+    },
+    {
+      "name": "node_cpu_usage",
+      "full_query": "sum by(cluster) (rate(node_cpu_seconds_total{mode='user'}[1m]))",
+      "schema": {
+        "columns": [],
+        "dtype": "float"
+      }
+    },
+    {
+      "name": "node_mem_usage",
+      "full_query": "node_memory_MemTotal_bytes - node_memory_MemFree_bytes - node_memory_Buffers_bytes - node_memory_Cached_bytes - node_memory_SReclaimable_bytes",
+      "schema": {
+        "columns": ["cluster"],
+        "dtype": "float"
+      }
+    },
+    {
+      "name": "pipelines_server_cpu_usage",
+      "full_query": "avg by(cluster) (rate(container_cpu_usage_seconds_total{container='dlstreamer-pipeline-server', service='monitoring-prometheus-kubelet'}[1m]))",
+      "schema": {
+        "columns": [],
+        "dtype": "float"
+      }
+    },
+    {
+      "name": "pipelines_server_mem_usage",
+      "rename": true,
+      "full_query": "avg by(cluster) (container_memory_working_set_bytes{container='dlstreamer-pipeline-server', service='monitoring-prometheus-kubelet'})",
+      "schema": {
+        "columns": [],
+        "dtype": "float"
+      }
+    }
+  ],
+  "merge": {
+    "index": ["timestamp", "cluster", "pipeline_id"]
+  }
+}
