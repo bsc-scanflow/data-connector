@@ -27,6 +27,7 @@ from TSLib.exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
 from TSLib.exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
 from TSLib.exp.exp_linear_regression import Exp_Linear_Regression
 from TSLib.exp.exp_random_forest import Exp_Random_Forest
+from TSLib.exp.exp_ets import Exp_ETS
 from TSLib.utils.print_args import print_args
 from preprocessing_new import Preprocessing
 
@@ -45,7 +46,7 @@ if __name__ == "__main__":
         type=str,
         required=True,
         default="long_term_forecast",
-        help="task name, options:[long_term_forecast, short_term_forecast, imputation, classification, anomaly_detection, linear_regression]",
+        help="task name, options:[long_term_forecast, short_term_forecast, imputation, classification, anomaly_detection, linear_regression, ets]",
     )
     parser.add_argument(
         "--is_training", type=int, required=True, default=1, help="status"
@@ -481,6 +482,8 @@ if __name__ == "__main__":
         Exp = Exp_Linear_Regression
     elif args.task_name == "random_forest": 
         Exp = Exp_Random_Forest
+    elif args.task_name == "ets":
+        Exp = Exp_ETS
     else:
         Exp = Exp_Long_Term_Forecast
     
@@ -662,6 +665,23 @@ if __name__ == "__main__":
             predictions_df.to_csv(output_path, index=False, sep=';')
             print(f"\nSaved all predictions to {output_path}")
             print(f"Total predictions: {len(predictions_df)} rows")
+            # Clean up processed CSV files to free disk space
+            for file in csv_files:
+                processed_path = os.path.join(saved_root, file)
+                if not os.path.exists(processed_path):
+                    continue
+                try:
+                    os.remove(processed_path)
+                    logger.info(f"Deleted processed csv file {processed_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete processed csv file {processed_path}: {e}")
+            # Remove merged input file once predictions are saved
+            if os.path.exists(merged_path):
+                try:
+                    os.remove(merged_path)
+                    logger.info(f"Deleted merged csv file {merged_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete merged csv file {merged_path}: {e}")
 
     # Print all predictions
     for file, pred in all_predictions.items():
