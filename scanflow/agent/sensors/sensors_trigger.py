@@ -165,8 +165,11 @@ async def add_sensor_cron(sensor_name: str):
                                     kwargs=sensor.kwargs,
                                     name=sensor.name
                                     )
-        logging.info(f"{sensor.name} has been added. sensor will run at {cronTrigger.crontab}")
-        return {"detail": f"{sensor.name} has been added. sensor will run at {cronTrigger.crontab}"}
+        #logging.info(f"{sensor.name} has been added. sensor will run at {cronTrigger.crontab}")
+        #return {"detail": f"{sensor.name} has been added. sensor will run at {cronTrigger.crontab}"}
+        logging.info(f"{sensor.name} has been added. sensor will run at {sensor.trigger.crontab}")
+        return {"detail": f"{sensor.name} has been added. sensor will run at {sensor.trigger.crontab}"}
+        
     else:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="trigger is not allowed")
 

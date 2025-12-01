@@ -1,7 +1,0 @@
-
-
-FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor
-
-COPY preprocessing-batch /app/preprocessing-batch
-
-ENTRYPOINT ["python", "/app/preprocessing-batch/main.py"]

@@ -1,0 +1,11 @@
+
+
+#FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-executor
+#FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/cloudedge-dataengineer-batch-inference-graph-predictor-batch
+FROM registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/cloudedge-dataengineer-batch-inference-graph-predictor-batch:latest
+
+COPY predictor-batch /app/predictor-batch
+
+RUN pip install --no-cache-dir -r /app/predictor-batch/requirements.txt
+
+ENTRYPOINT ["python", "/app/predictor-batch/main.py"]

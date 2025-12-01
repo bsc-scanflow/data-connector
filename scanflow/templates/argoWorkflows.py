@@ -3,7 +3,8 @@ import couler.argo as couler
 from couler.argo_submitter import ArgoSubmitter
 from couler.core.templates.volume import VolumeMount, Volume
 from couler.core.constants import ImagePullPolicy
-
+from couler.core import states
+from couler.core.templates.image_pull_secret import ImagePullSecret
 
 import logging
 logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
@@ -41,11 +42,11 @@ class ArgoWorkflows:
             volumeMounts.append(volumeMount)
         return volumeMounts
 
-    def argoExecutor(self, name, image, image_pull_policy, command, args, env, volumeMounts, resources):
+    def argoExecutor(self, name, image, image_pull_policy: str, command, args, env, volumeMounts, resources):
         logging.info(f" argo executor: {image_pull_policy}")
         return lambda: couler.run_container(
             image = image,
-            image_pull_policy = ImagePullPolicy.Always,
+            image_pull_policy = ImagePullPolicy(image_pull_policy),
             step_name = name,
             command = command,
             args = args,
@@ -56,14 +57,26 @@ class ArgoWorkflows:
     def argoDag(self, dependency_graph):
         couler.dag(dependency_graph)
 
-    def configWorkflow(self, workflow_name, affinity, cron_config):
-        couler.config_workflow(
-            name=workflow_name,
-            cron_config=cron_config,
-            # timeout=10800,
-            # time_to_clean=10800 * 1.5,
-            affinity=affinity
-        )
+    def configWorkflow(self, workflow_name, affinity, cron_config, image_pull_secrets:list[str] = None):
+        # TODO: Assign image_pull_policy to workflow, allegedly available within states.workflow
+        if image_pull_secrets:
+            for secret_name in image_pull_secrets:
+                states.workflow.add_image_pull_secret(ImagePullSecret(secret_name))
+        if affinity:
+            couler.config_workflow(
+                name=workflow_name,
+                cron_config=cron_config,
+                # timeout=10800,
+                # time_to_clean=10800 * 1.5,
+                affinity=affinity
+            )
+        else:
+            couler.config_workflow(
+                name=workflow_name,
+                cron_config=cron_config,
+                # timeout=10800,
+                # time_to_clean=10800 * 1.5,
+            )
 
     
 

@@ -1,0 +1,23 @@
+# Use Python 3.9.21
+FROM python:3.9.21-slim
+
+# Set working directory
+WORKDIR /app
+
+# Dependencies installation
+# =========================
+
+# - This image has a lot of big dependencies, so in order to not invalidate this layer every time there's a new change in code
+#   we'll externally bind the requirements file and later on copy the whole application folder
+#RUN --mount=type=bind,source=prediction/TSLib/requirements.txt,target=/tmp/requirements.txt \
+#    pip install --no-cache-dir --requirement /tmp/requirements.txt
+
+# Bind is only available with Docker buildkit, and Scanflow (by using Docker's Python SDK) doesn't use it.
+# We'll just copy the file first and install dependencies
+COPY prediction/TSLib/requirements.txt /tmp/
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Application
+# ===========
+# - Now copy the application code, that is the most modifiable part of the Docker image
+COPY prediction prediction

@@ -43,7 +43,8 @@ class ScanflowClient:
                  builder: str = "docker",
                  registry : str = "registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry",
                  scanflow_server_uri : str = None,
-                 verbose=True):
+                 verbose: bool = True,
+                 docker_network_mode: str = None):
         """
         """
         self.verbose = verbose
@@ -55,19 +56,21 @@ class ScanflowClient:
             raise ValueError("Scanflow_server_uri is not provided")
         self.scanflow_server_uri = get_server_uri()
 
-        self.builderbackend = self.get_builder(builder, registry)
+        self.builderbackend = self.get_builder(builder, registry, docker_network_mode)
 
-    def get_builder(self, builder, registry):
+    def get_builder(self, builder, registry, docker_network_mode: str = None):
         if builder == "docker":
             from scanflow.builder import DockerBuilder
-            return DockerBuilder(registry)
+            return DockerBuilder(registry, network_mode=docker_network_mode)
         else:
             logging.info(f"unknown builder backend {builder}")
 
     def build_ScanflowApplication(self,
-                                  app: Application, trackerPort: int):
+                                  app: Application,
+                                  trackerPort: int,
+                                  image_pull_secret: str = None):
         #build scanflowapp
-        return self.builderbackend.build_ScanflowApplication(app, trackerPort)
+        return self.builderbackend.build_ScanflowApplication(app, trackerPort, image_pull_secret=image_pull_secret)
 
 ###   Scanflow graph
 
@@ -87,9 +90,10 @@ class ScanflowClient:
                          image: str = None,
                          timeout: int = None,
                          resources: V1ResourceRequirements = None,
-                         affinity: V1Affinity = None):
+                         affinity: V1Affinity = None,
+                         image_pull_policy: str = "Always"):
         return Executor(name, mainfile, parameters, requirements, 
-        dockerfile, base_image, env, image, timeout, resources, affinity)
+        dockerfile, base_image, env, image, timeout, resources, affinity, image_pull_policy)
 
     def ScanflowService(self,
                         name: str,
@@ -129,8 +133,9 @@ class ScanflowClient:
                          affinity: V1Affinity = None,
                          kedaSpec: KedaSpec = None,
                          hpcSpec: HpaSpec = None,
-                         output_dir: str = None):
-        return Workflow(name, nodes, edges, type, cron, resources, affinity, kedaSpec, hpcSpec, output_dir)
+                         output_dir: str = None,
+                         image_pull_secrets: List[str] = None):
+        return Workflow(name, nodes, edges, type, cron, resources, affinity, kedaSpec, hpcSpec, output_dir, image_pull_secrets)
     
     def ScanflowApplication(self,
                             app_name: str,
@@ -173,13 +178,18 @@ class ScanflowClient:
                             next_run_time: datetime = None):
         return Sensor(name, isCustom, func_name, trigger, args, kwargs, next_run_time)
 
-    def ScanflowAgent(self,
-                      name: str,
-                      template: str = None,
-                      sensors: List[Sensor] = None,
-                      dockerfile: str = None,
-                      image: str = None):
-        return Agent(name, template, sensors, dockerfile, image)
+    def ScanflowAgent(
+            self,
+            name: str,
+            template: str = None,
+            sensors: List[Sensor] = None,
+            dockerfile: str = None,
+            image: str = None,
+            image_pull_secret: str = None,
+            image_pull_policy: str = "Always",
+            requirements: str = None
+        ):
+        return Agent(name, template, sensors, dockerfile, image, image_pull_secret=image_pull_secret, image_pull_policy=image_pull_policy, requirements=requirements)
 
 
 #scalers

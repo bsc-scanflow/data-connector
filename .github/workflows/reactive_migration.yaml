@@ -1,0 +1,108 @@
+name: Execute Reactive Migration notebook
+
+on:
+  # pull_request:
+  #   branches:
+  #     - 'main'
+  #     - 'pipeline_integration'
+  #   paths:
+  #     - examples/cloudedge-reactive-migration/**
+  #     - tutorials/cloudedge-reactive-migration/**
+  #     - .github/workflows/reactive_migration.yaml
+  # push:
+  #   branches:
+  #     - 'feat/reactive-migration-**'
+  #     #- 'main'
+  #     #- 'pipeline_integration'
+  #     - 'fix/**'
+  #   paths:
+  #     - examples/cloudedge-reactive-migration/**
+  #     - tutorials/cloudedge-reactive-migration/**
+  #     - .github/workflows/reactive_migration.yaml
+  workflow_dispatch: {}
+
+# Set environment variables
+env:
+  # Static variables
+  REACTIVE_MIGRATION_DATAENGINEER_APP_DIR: "examples/cloudedge-reactive-migration/dataengineer"
+  SCANFLOW_APP_NAME: "cloudedge-migration-experiment-ci"
+  SCANFLOW_TEAM_NAME: "dataengineer"
+  # From GitHub variables
+  WORKDIR: ${{ github.workspace }}
+  KUBECONFIG_PATH: ${{ github.workspace }}/.kube/config
+  DOCKER_TAG: ${{ github.ref_name }}
+  # From Action variables
+  SCANFLOW_SERVER_URI: ${{ vars.CELLNEX_SCANFLOW_SERVER_URI }}
+  SCANFLOW_TRACKER_URI: ${{ vars.CELLNEX_SCANFLOW_TRACKER_URI }}
+  MLFLOW_S3_ENDPOINT_URL: ${{ vars.CELLNEX_MLFLOW_S3_ENDPOINT_URL }}
+  AWS_ENDPOINT_URL: ${{ vars.CELLNEX_MLFLOW_S3_ENDPOINT_URL }}
+  DOCKER_REGISTRY: ${{ vars.GITLAB_CLOUDSKIN_REGISTRY_URI }}
+  LOCAL_DEPLOY: ${{ vars.CELLNEX_LOCAL_DEPLOY }}
+  NBY_ENV_NAME: ${{ vars.CELLNEX_NBY_ENV_NAME }}
+  NBY_SERVICE_NAME: ${{ vars.CELLNEX_NBY_SERVICE_NAME }}
+  # From Action secrets
+  SCANFLOW_TRACKER_STORAGE: ${{ secrets.CELLNEX_SCANFLOW_TRACKER_STORAGE }}
+  DOCKER_REGISTRY_USERNAME: ${{ secrets.GITLAB_REGISTRY_USERNAME }}
+  DOCKER_REGISTRY_PASSWORD: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  NBY_ENV_EMAIL: ${{ secrets.CELLNEX_NBY_ENV_EMAIL }}
+  NBY_ENV_PASSWORD: ${{ secrets.CELLNEX_NBY_ENV_PASSWORD }}
+  NBY_ORGANIZATION_ID: ${{ secrets.CELLNEX_NBY_ORGANIZATION_ID }}
+
+jobs:
+  jupyter-run:
+    name: "Run Jupyter Notebook"
+    #runs-on: ubuntu-latest
+    runs-on:
+    - self-hosted
+    - Linux
+    - X64
+    - cellnex
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11.5'
+        cache: 'pip'
+    - name: Install Python requirements
+      run: pip install -r tutorials/cloudedge-reactive-migration/requirements.txt -r tutorials/cloudedge-reactive-migration/requirements-scanflow.txt
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Login to GitLab Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ vars.GITLAB_REGISTRY_URI }}
+        username: ${{ secrets.GITLAB_REGISTRY_USERNAME }}
+        password: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
+    # - name: Pull image test
+    #   shell: bash
+    #   run: "docker pull registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/cloudedge-dataengineer-batch-inference-graph-predictor-batch:latest"
+    - name: Retrieve Kubeconf for Edge server
+      shell: bash
+      env:
+        # Action secrets
+        KUBECONF_BASE64: ${{ secrets.CELLNEX_KUBECONF_EDGE }}
+      run: |
+        mkdir -p $(dirname ${KUBECONFIG_PATH})
+        echo "$KUBECONF_BASE64" | base64 --decode > ${KUBECONFIG_PATH}
+        readlink -f ${KUBECONFIG_PATH}
+        ls -lh ${KUBECONFIG_PATH}
+
+    - name: Execute Reactive Migration Notebook
+      shell: bash
+      run: |
+        cd tutorials/cloudedge-reactive-migration
+        jupyter execute cloudedge-dataengineer.ipynb
+    # - name: Workaround - Manually push docker images
+    #   shell: bash
+    #   run: |
+    #     # debug: show local docker images
+    #     docker images
+    #     # workaround: manually push the image to the registry while scanflow isn't ready
+    #     FIXED_TAG=$(echo $DOCKER_TAG | sed 's@/@-@g')
+    #     docker images --format "{{.Repository}}:{{.Tag}}" --filter=reference="$DOCKER_REGISTRY/*:$FIXED_TAG" | xargs -I {} docker push {}
+    #     echo "Finished"

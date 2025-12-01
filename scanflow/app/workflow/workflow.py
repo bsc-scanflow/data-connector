@@ -24,7 +24,9 @@ class Workflow(object):
                  affinity: V1Affinity = None,
                  kedaSpec: KedaSpec = None,
                  hpaSpec: HpaSpec = None,
-                 output_dir: str = None):
+                 output_dir: str = None,
+                 image_pull_secrets: List[str] = None
+                 ):
 
         self.name = name
         self.nodes = nodes
@@ -36,6 +38,8 @@ class Workflow(object):
         self.kedaSpec = kedaSpec
         self.hpaSpec = hpaSpec
         self.output_dir = output_dir
+        # Image pull secrets are a list of names
+        self.image_pull_secrets = image_pull_secrets
 
     def to_dict(self):
         tmp_dict = {}

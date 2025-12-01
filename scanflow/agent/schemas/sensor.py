@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field, PyObject
+from pydantic import BaseModel
+from pydantic.types import ImportString
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -10,13 +11,14 @@ class Trigger(BaseModel):
     hours: int = 0
     minutes: int = 0
     seconds: int = 0
-    start_date: str = None
-    end_date: str = None
-    timezone: str = None
-    jitter: int = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    timezone: Optional[str] = None
+    jitter: Optional[int] = None
     #2.date
     run_date: str = None
-    timezone: str = None
+    # Duplicated attribute
+    #timezone: str = None
     #3.crontab
     crontab: str = None
 
@@ -28,7 +30,7 @@ class Sensor(BaseModel):
     next_run_time: datetime = None
 
 class SensorCallable(Sensor):
-    func: PyObject
+    func: ImportString
 
 class SensorOutput(BaseModel):
     id: str 

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-pod
+  namespace: scanflow-cloudedge-datascience
+spec:
+  containers:
+  - name: debug-container
+    image: registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/cloudedge-datascience-flow-preprocessing:latest
+    command: ["/bin/bash"]
+    stdin: true
+    tty: true
+  restartPolicy: Never
+

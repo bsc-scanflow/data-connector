@@ -99,24 +99,26 @@ class MlflowTracker(Tracker):
     def save_app_model(self, app_name, team_name, model_name, model_version):
         #load
         mlflow.set_tracking_uri(get_tracker_uri(True))
+        logging.info(f"DataScience Tracker URI: {get_tracker_uri(True)}")
         client = MlflowClient(get_tracker_uri(True))
         if model_version is not None:
             mv = client.get_model_version(model_name, model_version)
         else:
-            mv = client.get_latest_versions(model_name, stages=["Production"])
+            mv = client.get_latest_versions(model_name)
         if not os.path.exists(f"/tmp/model/{model_name}"):
             os.makedirs(f"/tmp/model/{model_name}")
-        local_path = client.download_artifacts(mv.run_id, path=model_name, dst_path=f"/tmp/model/{model_name}")
-        #logging.info("Artifacts downloaded in: {}".format(local_path))
-        #logging.info("Artifacts: {}".format(os.listdir(local_path)))
+        local_path = client.download_artifacts(mv[0].run_id, path=model_name, dst_path=f"/tmp/model/{model_name}")
+        logging.info("Artifacts downloaded in: {}".format(local_path))
+        logging.info("Artifacts: {}".format(os.listdir(local_path)))
 
         #get run
-        run = mlflow.get_run(mv.run_id)
+        run = mlflow.get_run(mv[0].run_id)
         metrics = run.data.metrics
         params = run.data.params
         logging.info(f"{metrics}--{params}")
 
         #save
+        logging.info(f"DataEngineer Tracker URI: {get_tracker_uri(False)}")
         mlflow.set_tracking_uri(get_tracker_uri(False))
         mlflow.set_experiment(app_name)
         with mlflow.start_run(run_name=f"scanflow-model-{team_name}") as run:
@@ -130,7 +132,7 @@ class MlflowTracker(Tracker):
             except:
                 logging.info(f"{model_name} exists")
             model_uri = "runs:/{}/{}".format(run.info.run_id, model_name)
-            mv_new = client.create_model_version(model_name, model_uri, run.info.run_id, mv.tags)
+            mv_new = client.create_model_version(model_name, model_uri, run.info.run_id, mv[0].tags)
             client.set_registered_model_alias(model_name, "Production", mv_new.version)
 
     #tested
@@ -141,15 +143,15 @@ class MlflowTracker(Tracker):
         if model_version is not None:
             mv = client.get_model_version(model_name, model_version)
         else:
-            mv = client.get_latest_versions(model_name, stages=["Production"])
+            mv = client.get_latest_versions(model_name)
         if not os.path.exists(f"/tmp/model/{model_name}"):
             os.makedirs(f"/tmp/model/{model_name}")
-        local_path = client.download_artifacts(mv.run_id, path=model_name, dst_path=f"/tmp/model/{model_name}")
-        #logging.info("Artifacts downloaded in: {}".format(local_path))
-        #logging.info("Artifacts: {}".format(os.listdir(local_path)))
+        local_path = client.download_artifacts(mv[0].run_id, path=model_name, dst_path=f"/tmp/model/{model_name}")
+        logging.info("Artifacts downloaded in: {}".format(local_path))
+        logging.info("Artifacts: {}".format(os.listdir(local_path)))
         
         #get run
-        run = mlflow.get_run(mv.run_id)
+        run = mlflow.get_run(mv[0].run_id)
         run_name = run.data.tags['mlflow.runName']
         experiment = mlflow.get_experiment(run.info.experiment_id)
         experiment_name = experiment.name

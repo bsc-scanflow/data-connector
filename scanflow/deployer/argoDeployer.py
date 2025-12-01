@@ -6,7 +6,7 @@ from scanflow.app import Workflow, Executor
 
 import scanflow.deployer.deployer as deployer
 from scanflow.templates import ArgoWorkflows
-from scanflow.deployer.env import ScanflowSecret, ScanflowClientConfig
+from scanflow.deployer.env import ScanflowSecret, ScanflowClientConfig, ScanflowEnvironment
 from scanflow.tools.param import format_parameters, format_command
 from scanflow.templates import Kubernetes
 
@@ -31,12 +31,17 @@ class ArgoDeployer(deployer.Deployer):
 
     def run_workflows(self, 
                       namespace : str,
-                      workflows : List[Workflow]):
+                      workflows : List[Workflow],
+                      scanflow_env: ScanflowEnvironment = None):
         submitted = True
         for workflow in workflows:
             if workflow.type == 'batch':
                 logging.info(f"[++] Running workflow: [{workflow.name}].")
-                submitted = submitted and self.run_workflow(namespace, workflow)
+                submitted = submitted and self.run_workflow(
+                    namespace=namespace,
+                    workflow=workflow,
+                    scanflow_env=scanflow_env
+                )
                 logging.info(f"[+] Workflow: [{workflow.name}] was run successfully.")
             else:
                 logging.error(f"[**] Workflow [{workflow.name}] is not batch")
@@ -44,7 +49,8 @@ class ArgoDeployer(deployer.Deployer):
 
     def run_workflow(self, 
                      namespace : str,
-                     workflow: Workflow):
+                     workflow: Workflow,
+                     scanflow_env: ScanflowEnvironment):
         """
         run workflow by argo
         """
@@ -62,9 +68,15 @@ class ArgoDeployer(deployer.Deployer):
                 # schedule to run at one minute past midnight (00:01) every day
                 # cron_config = {"schedule": "1 0 * * *", "suspend": "false"}
                 #cron_config = {"schedule": "*/5 * * * *", "suspend": "false"}
-                cron_config = {"schedule": workflow.cron, "timezone": "Europe/Madrid"}
+                cron_config = {
+                    "schedule": workflow.cron,
+                    "timezone": "Europe/Madrid",
+                    "suspend": False
+                }
+            else:
+                cron_config = None
                 
-            self.argoclient.configWorkflow(workflow_name, workflow_affinity, cron_config)
+            self.argoclient.configWorkflow(workflow_name, workflow_affinity, cron_config, workflow.image_pull_secrets)
 
             #output volume - deleted mode
             if workflow.output_dir is not None:
@@ -85,9 +97,16 @@ class ArgoDeployer(deployer.Deployer):
             #self.argoclient.buildVolumes(outputpath=workflow_name)
             self.argoclient.buildVolumes(outputpath=workflow_name, scanflowpath=f"scanflow-{namespace}")
             #env
-            ss = ScanflowSecret()
-            scc = ScanflowClientConfig()
-            scc.SCANFLOW_TRACKER_LOCAL_URI = f"http://scanflow-tracker.{namespace}.svc.cluster.local"
+            # If no ScanflowEnvironment is provided, then a default one is created
+            # - The default environment expects Scanflow server to be deployed via Helm and its Release name to be "scanflow"
+            if not scanflow_env:
+                ss = ScanflowSecret()
+                scc = ScanflowClientConfig()
+                scc.SCANFLOW_TRACKER_LOCAL_URI = f"http://scanflow-tracker.{namespace}.svc.cluster.local"
+            else:
+                ss = scanflow_env.secret
+                scc = scanflow_env.client_config
+
             env = ss.__dict__
             env.update(scc.__dict__)
             logging.info(f"env for executor {env}")
@@ -106,7 +125,7 @@ class ArgoDeployer(deployer.Deployer):
                     logging.info(f"{executor.resources.to_dict().get('limits')}")
                     argoContainers[f"{executor.name}"] = self.argoclient.argoExecutor(name = executor.name, 
                              image = executor.image,
-                             image_pull_policy = None,
+                             image_pull_policy = executor.image_pull_policy,
                              command = format_command({'python': f'/app/{executor.name}/{executor.mainfile}'})+format_parameters(executor.parameters),
                              args = [],
                             #  args = format_parameters(executor.parameters),
@@ -118,7 +137,7 @@ class ArgoDeployer(deployer.Deployer):
                     logging.info(f" command: {format_command({'python': f'/app/{executor.name}/{executor.mainfile}'})}")
                     argoContainers[f"{executor.name}"] = self.argoclient.argoExecutor(name = executor.name, 
                              image = executor.image,
-                             image_pull_policy = None,
+                             image_pull_policy = executor.image_pull_policy,
                              command = format_command({'python': f'/app/{executor.name}/{executor.mainfile}'})+format_parameters(executor.parameters),
                             #  args = format_parameters(executor.parameters),
                              args = [],
@@ -144,13 +163,16 @@ class ArgoDeployer(deployer.Deployer):
 
             argoWorkflow = self.argoclient.submitWorkflow(namespace)
             logging.info(f"[+++] Workflow: [{workflow_name}] has been submitted to argo {argoWorkflow}")
-
-            if workflow.cron:
-                #TODO: couler bug for cron workflow, need to change suspend to true or false, now it turns into 'true' 'false'
-                #kubectl patch cronworkflows.argoproj.io -n scanflow-cloudedge-dataengineer batch-inference-graph --type='json' -p='[{"op": "replace", "path": "/spec/suspend", "value": false}]'
-                self.kubeclient.patch_cron_workflow(namespace, 
-                                                    workflow_name, 
-                                                    False)
+            
+            # OBSOLETE: You can overwrite the default "false" value of "spec.suspend" field when configuring the "cron_config"
+            # There's no need to patch it afterwards
+            
+            #if workflow.cron:
+            #    #TODO: couler bug for cron workflow, need to change suspend to true or false, now it turns into 'true' 'false'
+            #    #kubectl patch cronworkflows.argoproj.io -n scanflow-cloudedge-dataengineer batch-inference-graph --type='json' -p='[{"op": "replace", "path": "/spec/suspend", "value": false}]'
+            #    self.kubeclient.patch_cron_workflow(namespace, 
+            #                                        workflow_name, 
+            #                                        False)
 
             if argoWorkflow is not None:
                 return True

@@ -1,0 +1,26 @@
+# Default values for chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Define global imagePullSecrets if required
+# Example:
+# imagePullSecrets:
+#   - name: your-registry-secret
+imagePullSecrets: []
+
+basic:
+  image_tag_version: "latest"
+  #scanflow_server_image_name: "peiniliu/scanflow-server"
+  #scanflow_tracker_image_name: "peiniliu/scanflow-tracker"
+  scanflow_server_image_name: "registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-server"
+  scanflow_tracker_image_name: "registry.gitlab.bsc.es/datacentric-computing/cloudskin-project/cloudskin-registry/scanflow-tracker"
+  image_pull_policy: "Always"
+tracker:
+  scanflow_tracker_storage_backend: "postgresql"
+  scanflow_tracker_storage_url: "scanflow-postgres.scanflow-server.svc.cluster.local"
+  scanflow_tracker_storage_username: "postgres"
+  scanflow_tracker_storage_password: "scanflow123"
+  scanflow_tracker_artifact_backend: "s3"
+  scanflow_tracker_artifact_url: "http://minio.scanflow-server.svc.cluster.local"
+  scanflow_tracker_artifact_username: "scanflow"
+  scanflow_tracker_artifact_password: "scanflow123"

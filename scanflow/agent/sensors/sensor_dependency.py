@@ -30,7 +30,7 @@ class SensorDependency:
             data.kwargs['runs'] = runs
             active_run = self.save_message(function=request.get('endpoint').__name__ , nodes=data.kwargs['run_ids'], client=request.get('client'), server=request.get('server')+(request.url.path,))
         else:
-            active_run = self.save_message(function=request.get('endpoint').__name__ , nodes=None, client=request.get('client'), server=request.get('server')+(request.url.path,))
+            active_run = self.save_message(function=request.get('endpoint').__name__ , nodes=[], client=request.get('client'), server=request.get('server')+(request.url.path,))
 
         return (active_run, data.args, data.kwargs)
 

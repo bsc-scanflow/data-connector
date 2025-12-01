@@ -1,0 +1,2 @@
+# Common files to ignore when building any of the workflow stages
+**/Dockerfile_*

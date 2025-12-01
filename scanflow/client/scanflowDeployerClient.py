@@ -16,13 +16,13 @@ import requests
 import json
 
 from scanflow.tools.scanflowtools import check_verbosity
-from scanflow.deployer.env import ScanflowClientConfig, ScanflowTrackerConfig, ScanflowSecret, ScanflowEnvironment
+from scanflow.deployer.env import ScanflowEnvironment
 from scanflow.app import Application, Workflow, Executor
 from .httpClient import http_client
 
 logging.basicConfig(format='%(asctime)s -  %(levelname)s - %(message)s',
                     datefmt='%d-%b-%y %H:%M:%S')
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.DEBUG)
 
 class ScanflowDeployerClient:
     def __init__(self,
@@ -62,6 +62,9 @@ class ScanflowDeployerClient:
             #user_type == "local"
             self.deployerbackend = self._get_deployer(deployer, k8s_config_file)
     
+        # Create a Scanflow environment attribute
+        self.scanflowEnv: ScanflowEnvironment = None
+
 #    async def __del__(self):
 #        logging.info("scanflowdeployerclient del")
 #        await http_client.stop()
@@ -83,19 +86,23 @@ class ScanflowDeployerClient:
     async def create_environment(self, 
                            app: Application,
                            scanflowEnv: ScanflowEnvironment=None):
+        # If no ScanflowEnvironment is provided, then a default one is created
+        # - The default environment expects Scanflow server to be deployed via Helm and its Release name to be "scanflow"
         if scanflowEnv is None:
-            scanflowEnv = ScanflowEnvironment()
+            self.scanflowEnv = ScanflowEnvironment()
             namespace = f"scanflow-{app.app_name}-{app.team_name}" 
-            scanflowEnv.namespace = namespace
-            scanflowEnv.tracker_config.TRACKER_STORAGE = f"postgresql://postgres:scanflow123@scanflow-postgres.scanflow-server.svc.cluster.local/{namespace}"
-            scanflowEnv.tracker_config.TRACKER_ARTIFACT = f"s3://scanflow/{namespace}"
-            scanflowEnv.client_config.SCANFLOW_TRACKER_LOCAL_URI = f"http://scanflow-tracker.{namespace}.svc.cluster.local"
-
+            self.scanflowEnv.namespace = namespace
+            self.scanflowEnv.tracker_config.TRACKER_STORAGE = f"postgresql://postgres:scanflow123@scanflow-postgres.scanflow-server.svc.cluster.local/{namespace}"
+            self.scanflowEnv.tracker_config.TRACKER_ARTIFACT = f"s3://scanflow/{namespace}"
+            self.scanflowEnv.client_config.SCANFLOW_TRACKER_LOCAL_URI = f"http://scanflow-tracker.{namespace}.svc.cluster.local"
+        else:
+            self.scanflowEnv = scanflowEnv
+        
         if self.user_type == "incluster":
             url = f"{self.scanflow_server_uri}/deployer/create_environment"
             json_data = {
                 'app': app.to_dict(),
-                'scanflowEnv': scanflowEnv.to_dict()
+                'scanflowEnv': self.scanflowEnv.to_dict()
             }
             async with http_client.session.post(url, data=json.dumps(json_data)) as response:
                 status = response.status
@@ -108,11 +115,22 @@ class ScanflowDeployerClient:
                 return False
 
         else: #local
-            result = self.deployerbackend.create_environment(scanflowEnv.namespace, scanflowEnv.secret.__dict__, scanflowEnv.tracker_config.__dict__, scanflowEnv.client_config.__dict__, app.tracker, app.agents)
+            result = self.deployerbackend.create_environment(
+                namespace=self.scanflowEnv.namespace,
+                scanflowSecret=self.scanflowEnv.secret.__dict__,
+                scanflowTrackerConfig=self.scanflowEnv.tracker_config.__dict__,
+                scanflowClientConfig=self.scanflowEnv.client_config.__dict__,
+                tracker=app.tracker,
+                agents=app.agents,
+                docker_creds=self.scanflowEnv.image_pull_secret
+            )
             return result
 
     async def clean_environment(self, 
-                          app: Application):
+                          app: Application,
+                          scanflow_env: ScanflowEnvironment = None):
+        if scanflow_env:
+            self.scanflowEnv = scanflow_env
         if self.user_type == "incluster":
             url = f"{self.scanflow_server_uri}/deployer/clean_environment"
             logging.info(f"{json.dumps(app.to_dict())}")
@@ -126,8 +144,8 @@ class ScanflowDeployerClient:
                 logging.error(f"clean scanflow application env error: {text['detail']}")
                 return False
         else: #local
-            namespace = f"scanflow-{app.app_name}-{app.team_name}" 
-            return self.deployerbackend.clean_environment(namespace, app.agents)
+            namespace = self.scanflowEnv.namespace if self.scanflowEnv else f"scanflow-{app.app_name}-{app.team_name}" 
+            return self.deployerbackend.clean_environment(namespace, app.agents, self.scanflowEnv)
 
     async def start_agents(self,
                           app: Application):
@@ -180,7 +198,7 @@ class ScanflowDeployerClient:
                 return False
         else: #local
             namespace = f"scanflow-{app.app_name}-{app.team_name}"
-            return self.deployerbackend.run_workflows(namespace, app.workflows)
+            return self.deployerbackend.run_workflows(namespace, app.workflows, self.scanflowEnv)
 
     async def delete_app(self,
                          app: Application):
