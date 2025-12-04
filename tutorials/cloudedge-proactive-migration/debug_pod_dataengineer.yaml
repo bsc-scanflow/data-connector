@@ -13,12 +13,12 @@ spec:
     volumeMounts:
       - mountPath: /scanflow
         name: scanflowpath
-      - mountPath: /workflow
-        name: workflowpath
+      #- mountPath: /workflow
+      #  name: workflowpath
   volumes:
     - name: scanflowpath
       persistentVolumeClaim:
         claimName: scanflow-scanflow-cloudedge-proactive-migration-ci-dataengineer
-    - name: workflowpath
-      persistentVolumeClaim:
-        claimName: batch-inference-proactive-graph
+    #- name: workflowpath
+    #  persistentVolumeClaim:
+    #    claimName: batch-inference-proactive-graph
